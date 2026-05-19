@@ -3,44 +3,108 @@
 <head>
 <meta charset="UTF-8" />
 <title>舞萌 Festival 转场复刻 - 滚动驱动</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
 <style>
   :root {
-    /* 参考视频前 ~10 帧（~167ms）画面完全空白，动画从 f10~f12 才开始。所以所有动画统一加 ~170ms 全局延迟 */
-    --t0:         0.17s;   /* 全局起始延迟 */
-    --dur-chip:   0.62s;   /* v41 恢复 v33: 滴拉熊 0.62s（含旋转） */
-    --dur-base:   0.80s;   /* v41 恢复 v33: 底板 */
-    --dur-purple: 0.70s;   /* v41 恢复 v33: 两角淡紫 */
-    --dur-white:  0.68s;   /* v41 恢复 v33: 两角白色 */
-    --dur-bg:     0.75s;   /* v41 恢复 v33: slide/hold (jitter 0.55-0.80s) */
+    --t0:         0.17s;
+    --dur-chip:   0.62s;
+    --dur-base:   0.80s;
+    --dur-purple: 0.70s;
+    --dur-white:  0.68s;
+    --dur-bg:     0.75s;
 
-    /* === 出场（v25 重新校准参考视频 60fps 帧实测） ===
-       chip f95→f120（0.42s）：缩 → 光环 → 消散
-       背景 f117→f128（0.18s）：飞出超快
-       f130 后几乎全空。 */
     --t-exit-chip:   1.62s;
-    --t-exit-base:   1.746s;  /* v44: 底板/HOLD/Slide 在 chip 收缩结束后才启动放大/退场 */
+    --t-exit-base:   1.746s;
     --t-exit-bg:     1.746s;
-    --dur-exit-chip:   0.42s;  /* v42 */
-    --dur-exit-base:   0.70s;  /* v51: 出场底板缩短以贴近两角结束时刻 */
-    --dur-exit-purple: 0.70s;  /* v48: 出场两角淡紫与入场同速 */
-    --dur-exit-white:  0.68s;  /* v48: 出场两角白色与入场同速 */
+    --dur-exit-chip:   0.42s;
+    --dur-exit-base:   0.70s;
+    --dur-exit-purple: 0.70s;
+    --dur-exit-white:  0.68s;
     --dur-exit-bg:     0.294s;
   }
 
   html, body {
     margin: 0; padding: 0; width: 100%; height: 100%;
-    background: #1a1a1a;
+    background: #0e0e12;
     overflow-x: hidden;
     overflow-y: auto;
-    font-family: system-ui, sans-serif;
+    font-family: 'Noto Sans SC', system-ui, sans-serif;
   }
 
-  /* 用 300vh 创建 200vh 可滚动距离（1 屏视口 + 2 屏滚动） */
+  /* ========== 滚动空间：5 屏 ========== */
   .scroll-space {
-    height: 300vh;
+    height: 500vh;
+    position: relative;
+    z-index: 1;
+    pointer-events: none;
   }
 
-  /* 16:9 居中舞台（固定在视口内） */
+  /* ========== 内容页（固定定位，随滚动显隐） ========== */
+  .content-page {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    transition: opacity 0.35s ease;
+    pointer-events: none;
+  }
+
+  .content-page p {
+    font-size: clamp(1.1rem, 2.8vw, 2rem);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-align: center;
+    margin: 0 2rem 2rem;
+    line-height: 1.7;
+  }
+
+  .content-page img {
+    max-width: min(280px, 55vw);
+    max-height: 40vh;
+    object-fit: contain;
+    border-radius: 16px;
+    filter: drop-shadow(0 8px 32px rgba(0,0,0,.45));
+  }
+
+  /* --- 第一页（滚动前） --- */
+  #page-before {
+    background: linear-gradient(160deg, #1a1028 0%, #0e0e12 40%, #121824 100%);
+    color: #c8b8e8;
+  }
+  #page-before p {
+    text-shadow: 0 2px 20px rgba(160,130,220,.35);
+  }
+  #page-before img {
+    animation: float-sad 3.5s ease-in-out infinite;
+  }
+
+  @keyframes float-sad {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-12px); }
+  }
+
+  /* --- 第二页（滚动后） --- */
+  #page-after {
+    background: linear-gradient(160deg, #1c1408 0%, #0e0e12 40%, #0f1a10 100%);
+    color: #e8d8a8;
+    opacity: 0;
+  }
+  #page-after p {
+    text-shadow: 0 2px 20px rgba(220,190,100,.35);
+  }
+  #page-after img {
+    animation: float-happy 3s ease-in-out infinite;
+  }
+
+  @keyframes float-happy {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50%      { transform: translateY(-10px) scale(1.03); }
+  }
+
+  /* ========== 16:9 居中舞台（固定在视口内） ========== */
   .stage {
     position: fixed;
     inset: 0;
@@ -48,6 +112,12 @@
     align-items: center;
     justify-content: center;
     pointer-events: none;
+    z-index: 5;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+  }
+  .stage.visible {
+    opacity: 1;
   }
   .stage > .frame {
     aspect-ratio: 16 / 9;
@@ -77,7 +147,7 @@
     transform: translateX(-50%);
     z-index: 20;
     color: rgba(255,255,255,.7);
-    font: 14px/1 system-ui, sans-serif;
+    font: 14px/1 'Noto Sans SC', system-ui, sans-serif;
     text-align: center;
     pointer-events: none;
     transition: opacity 0.4s;
@@ -305,12 +375,29 @@
     <span class="arrow"></span>
   </div>
   <div class="scroll-space" aria-hidden="true"></div>
-  <div class="stage">
+
+  <!-- 第一页：滚动前 -->
+  <div class="content-page" id="page-before">
+    <p>不知道给自己的网站用什么转场？</p>
+    <img src="sad.png" alt="sad">
+  </div>
+
+  <!-- 转场舞台 -->
+  <div class="stage" id="stage">
     <div class="frame" id="frame"></div>
+  </div>
+
+  <!-- 第二页：滚动后 -->
+  <div class="content-page" id="page-after">
+    <p>来试试给wmc量身定制的乌蒙转场！</p>
+    <img src="happy.JPG" alt="happy">
   </div>
 
 <script>
   const frame = document.getElementById('frame');
+  const stage = document.getElementById('stage');
+  const pageBefore = document.getElementById('page-before');
+  const pageAfter = document.getElementById('page-after');
   let animations = [];
   let totalDuration = 0;
   let rafId = null;
@@ -319,10 +406,10 @@
   function jitterSlides(root) {
     const all = root.querySelectorAll('#HOLD > use, #Slide > use');
     all.forEach(el => {
-      const durIn    = 0.55 + Math.random() * 0.25;  // 入场 0.55~0.80s
-      const delayIn  = 0.17 + Math.random() * 0.06;  // 入场 t0 0.17 + 0~0.06s
-      const durOut   = 0.27 + Math.random() * 0.04;  // 出场 0.27~0.31s
-      const delayOut = 1.746 + Math.random() * 0.02; // HOLD/Slide 与 chip 收缩结束同时启动退场
+      const durIn    = 0.55 + Math.random() * 0.25;
+      const delayIn  = 0.17 + Math.random() * 0.06;
+      const durOut   = 0.27 + Math.random() * 0.04;
+      const delayOut = 1.746 + Math.random() * 0.02;
       el.style.animationDuration = `${durIn.toFixed(3)}s, ${durOut.toFixed(3)}s`;
       el.style.animationDelay    = `${delayIn.toFixed(3)}s, ${delayOut.toFixed(3)}s`;
     });
@@ -362,28 +449,72 @@
     return window.scrollY || window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
   }
 
+  /**
+   * 滚动布局（5 屏 = 500vh）：
+   *   0      ~ 100vh  → 第一页（page-before）
+   *   100vh  ~ 300vh  → 转场动画（stage）
+   *   300vh  ~ 500vh  → 第二页（page-after）
+   *
+   * 滚动进度 progress 0→1 映射整段 500vh：
+   *   progress 0.0 ~ 0.2  → 第一页可见
+   *   progress 0.2 ~ 0.6  → 转场动画
+   *   progress 0.6 ~ 1.0  → 第二页可见
+   */
   function updateTimeline() {
-    if (!animations.length || totalDuration <= 0) return;
-    const scrollRange = window.innerHeight * 2;
+    const scrollRange = window.innerHeight * 4;   // 500vh - 100vh = 4 屏可滚距离
     const progress = clamp01(getScrollY() / scrollRange);
-    const t = progress * totalDuration;
-    animations.forEach(anim => {
-      const timing = anim.effect.getTiming();
-      const delay = typeof timing.delay === 'number' ? timing.delay : 0;
-      const endDelay = typeof timing.endDelay === 'number' ? timing.endDelay : 0;
-      const duration = typeof timing.duration === 'number' ? timing.duration : 0;
-      const iterations = typeof timing.iterations === 'number' ? timing.iterations : 1;
-      const activeEnd = delay + duration * iterations + endDelay;
-      if (t < delay) {
-        /* 尚未到达该动画的延迟区：回退到 fill-mode 之前（延迟前） */
-        anim.currentTime = 0;
-      } else if (t > activeEnd) {
-        /* 已超过该动画结束：保持终态 */
-        anim.currentTime = activeEnd;
-      } else {
-        anim.currentTime = t;
-      }
-    });
+
+    /* --- 第一页渐隐 --- */
+    const beforeFadeStart = 0.12;
+    const beforeFadeEnd   = 0.22;
+    if (progress <= beforeFadeStart) {
+      pageBefore.style.opacity = 1;
+    } else if (progress >= beforeFadeEnd) {
+      pageBefore.style.opacity = 0;
+    } else {
+      pageBefore.style.opacity = 1 - (progress - beforeFadeStart) / (beforeFadeEnd - beforeFadeStart);
+    }
+
+    /* --- 舞台可见性 --- */
+    const stageStart = 0.18;
+    const stageEnd   = 0.62;
+    if (progress >= stageStart && progress <= stageEnd) {
+      stage.classList.add('visible');
+    } else {
+      stage.classList.remove('visible');
+    }
+
+    /* --- 转场动画时间轴 --- */
+    if (animations.length && totalDuration > 0) {
+      const animProgress = clamp01((progress - stageStart) / (stageEnd - stageStart));
+      const t = animProgress * totalDuration;
+      animations.forEach(anim => {
+        const timing = anim.effect.getTiming();
+        const delay = typeof timing.delay === 'number' ? timing.delay : 0;
+        const endDelay = typeof timing.endDelay === 'number' ? timing.endDelay : 0;
+        const duration = typeof timing.duration === 'number' ? timing.duration : 0;
+        const iterations = typeof timing.iterations === 'number' ? timing.iterations : 1;
+        const activeEnd = delay + duration * iterations + endDelay;
+        if (t < delay) {
+          anim.currentTime = 0;
+        } else if (t > activeEnd) {
+          anim.currentTime = activeEnd;
+        } else {
+          anim.currentTime = t;
+        }
+      });
+    }
+
+    /* --- 第二页渐显 --- */
+    const afterFadeStart = 0.56;
+    const afterFadeEnd   = 0.66;
+    if (progress <= afterFadeStart) {
+      pageAfter.style.opacity = 0;
+    } else if (progress >= afterFadeEnd) {
+      pageAfter.style.opacity = 1;
+    } else {
+      pageAfter.style.opacity = (progress - afterFadeStart) / (afterFadeEnd - afterFadeStart);
+    }
   }
 
   function requestUpdate() {

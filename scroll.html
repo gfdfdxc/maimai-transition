@@ -127,12 +127,11 @@
   }
   .stage > .frame {
     aspect-ratio: 16 / 9;
-    width: min(100vw, calc(100vh * 16 / 9));
-    height: min(100vh, calc(100vw * 9 / 16));
+    width: max(100vw, calc(100vh * 16 / 9));
+    height: max(100vh, calc(100vw * 9 / 16));
     background: transparent;
     overflow: hidden;
     position: relative;
-    box-shadow: 0 0 32px rgba(0,0,0,.5);
   }
   .stage svg {
     width: 100%;

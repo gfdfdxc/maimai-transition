@@ -59,6 +59,20 @@
     transition: opacity 0.35s ease;
   }
 
+  .project-link {
+    position: absolute;
+    bottom: 24px;
+    font-size: 0.85rem;
+    color: rgba(58, 26, 0, 0.6);
+    text-decoration: none;
+    transition: color 0.2s;
+    pointer-events: auto;
+  }
+  .project-link:hover {
+    color: rgba(58, 26, 0, 0.9);
+    text-decoration: underline;
+  }
+
   .content-page p {
     font-size: clamp(1.1rem, 2.8vw, 2rem);
     font-weight: 500;
@@ -400,6 +414,7 @@
       <p>来试试给wmc量身定制的乌蒙转场！</p>
       <img src="happy.JPG" alt="happy">
     </div>
+    <a class="project-link" href="https://github.com/gfdfdxc/maimai-transition" target="_blank" rel="noopener">项目链接：github.com/gfdfdxc/maimai-transition</a>
   </div>
 
 <script>

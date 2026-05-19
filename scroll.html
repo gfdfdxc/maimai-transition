@@ -47,9 +47,16 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    z-index: 10;
-    transition: opacity 0.35s ease;
+    z-index: 3;
     pointer-events: none;
+  }
+
+  .content-page .page-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.35s ease;
   }
 
   .content-page p {
@@ -71,11 +78,11 @@
 
   /* --- 第一页（滚动前） --- */
   #page-before {
-    background: linear-gradient(160deg, #1a1028 0%, #0e0e12 40%, #121824 100%);
-    color: #c8b8e8;
+    background: linear-gradient(160deg, #1a2a6c 0%, #2d5aa0 35%, #4a90d9 70%, #7ec8e3 100%);
+    color: #e0f0ff;
   }
   #page-before p {
-    text-shadow: 0 2px 20px rgba(160,130,220,.35);
+    text-shadow: 0 2px 20px rgba(100,180,255,.4);
   }
   #page-before img {
     animation: float-sad 3.5s ease-in-out infinite;
@@ -88,12 +95,11 @@
 
   /* --- 第二页（滚动后） --- */
   #page-after {
-    background: linear-gradient(160deg, #1c1408 0%, #0e0e12 40%, #0f1a10 100%);
-    color: #e8d8a8;
-    opacity: 0;
+    background: linear-gradient(160deg, #b85c1e 0%, #e08a3a 35%, #f0b060 70%, #f7d794 100%);
+    color: #3a1a00;
   }
   #page-after p {
-    text-shadow: 0 2px 20px rgba(220,190,100,.35);
+    text-shadow: 0 2px 20px rgba(200,120,30,.35);
   }
   #page-after img {
     animation: float-happy 3s ease-in-out infinite;
@@ -123,7 +129,7 @@
     aspect-ratio: 16 / 9;
     width: min(100vw, calc(100vh * 16 / 9));
     height: min(100vh, calc(100vw * 9 / 16));
-    background: #ffffff;
+    background: transparent;
     overflow: hidden;
     position: relative;
     box-shadow: 0 0 32px rgba(0,0,0,.5);
@@ -378,8 +384,10 @@
 
   <!-- 第一页：滚动前 -->
   <div class="content-page" id="page-before">
-    <p>不知道给自己的网站用什么转场？</p>
-    <img src="sad.png" alt="sad">
+    <div class="page-content">
+      <p>不知道给自己的网站用什么转场？</p>
+      <img src="sad.png" alt="sad">
+    </div>
   </div>
 
   <!-- 转场舞台 -->
@@ -389,8 +397,10 @@
 
   <!-- 第二页：滚动后 -->
   <div class="content-page" id="page-after">
-    <p>来试试给wmc量身定制的乌蒙转场！</p>
-    <img src="happy.JPG" alt="happy">
+    <div class="page-content">
+      <p>来试试给wmc量身定制的乌蒙转场！</p>
+      <img src="happy.JPG" alt="happy">
+    </div>
   </div>
 
 <script>
@@ -398,6 +408,8 @@
   const stage = document.getElementById('stage');
   const pageBefore = document.getElementById('page-before');
   const pageAfter = document.getElementById('page-after');
+  const contentBefore = pageBefore.querySelector('.page-content');
+  const contentAfter = pageAfter.querySelector('.page-content');
   let animations = [];
   let totalDuration = 0;
   let rafId = null;
@@ -464,15 +476,27 @@
     const scrollRange = window.innerHeight * 4;   // 500vh - 100vh = 4 屏可滚距离
     const progress = clamp01(getScrollY() / scrollRange);
 
-    /* --- 第一页渐隐 --- */
+    /* --- 第一页内容渐隐（背景保持可见） --- */
     const beforeFadeStart = 0.12;
     const beforeFadeEnd   = 0.22;
     if (progress <= beforeFadeStart) {
+      contentBefore.style.opacity = 1;
       pageBefore.style.opacity = 1;
     } else if (progress >= beforeFadeEnd) {
-      pageBefore.style.opacity = 0;
+      contentBefore.style.opacity = 0;
+      /* 第一页背景在转场后半段渐隐，与第二页背景交叉淡出 */
+      const bgFadeStart = 0.38;
+      const bgFadeEnd = 0.50;
+      if (progress <= bgFadeStart) {
+        pageBefore.style.opacity = 1;
+      } else if (progress >= bgFadeEnd) {
+        pageBefore.style.opacity = 0;
+      } else {
+        pageBefore.style.opacity = 1 - (progress - bgFadeStart) / (bgFadeEnd - bgFadeStart);
+      }
     } else {
-      pageBefore.style.opacity = 1 - (progress - beforeFadeStart) / (beforeFadeEnd - beforeFadeStart);
+      contentBefore.style.opacity = 1 - (progress - beforeFadeStart) / (beforeFadeEnd - beforeFadeStart);
+      pageBefore.style.opacity = 1;
     }
 
     /* --- 舞台可见性 --- */
@@ -505,15 +529,24 @@
       });
     }
 
-    /* --- 第二页渐显 --- */
-    const afterFadeStart = 0.56;
-    const afterFadeEnd   = 0.66;
-    if (progress <= afterFadeStart) {
+    /* --- 第二页渐显（背景先显，内容后显） --- */
+    const afterBgFadeStart = 0.38;
+    const afterBgFadeEnd   = 0.50;
+    const afterContentFadeStart = 0.56;
+    const afterContentFadeEnd   = 0.66;
+    if (progress <= afterBgFadeStart) {
       pageAfter.style.opacity = 0;
-    } else if (progress >= afterFadeEnd) {
+    } else if (progress >= afterBgFadeEnd) {
       pageAfter.style.opacity = 1;
     } else {
-      pageAfter.style.opacity = (progress - afterFadeStart) / (afterFadeEnd - afterFadeStart);
+      pageAfter.style.opacity = (progress - afterBgFadeStart) / (afterBgFadeEnd - afterBgFadeStart);
+    }
+    if (progress <= afterContentFadeStart) {
+      contentAfter.style.opacity = 0;
+    } else if (progress >= afterContentFadeEnd) {
+      contentAfter.style.opacity = 1;
+    } else {
+      contentAfter.style.opacity = (progress - afterContentFadeStart) / (afterContentFadeEnd - afterContentFadeStart);
     }
   }
 

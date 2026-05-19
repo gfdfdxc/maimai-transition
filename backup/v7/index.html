@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>舞萌 Festival 转场复刻 · 入场</title>
+<style>
+  :root {
+    /* 整体入场 ≈ 视频 0~55 帧 ≈ 0.92s，保留一点缓出余量 */
+    --dur-chip:   0.70s;   /* 滴拉熊 zoom + 旋转（+ delay 0.10s「end@800ms」） */
+    --dur-base:   0.80s;   /* 底板（end@800ms） */
+    --dur-purple: 0.77s;   /* 两角淡紫，delay 0.03s「end@800ms」 */
+    --dur-white:  0.75s;   /* 两角白色，delay 0.05s「end@800ms」 */
+    --dur-bg:     0.75s;   /* slide / hold 默认（jitter 后 0.55-0.80s） */
+
+  }
+
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: #1a1a1a;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+  }
+
+  /* 16:9 居中舞台 */
+  .stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stage > .frame {
+    aspect-ratio: 16 / 9;
+    width: min(100vw, calc(100vh * 16 / 9));
+    height: min(100vh, calc(100vw * 9 / 16));
+    background: #ffffff;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 32px rgba(0,0,0,.5);
+  }
+  .stage svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ===== 动画关键帧 ===== */
+
+  /* 滴拉熊：始终居中（SVG viewBox 中心 = 1920, 1080）。
+     用显式 translate(cx,cy) · rotate · scale · translate(-cx,-cy)，
+     避免 transform-box: fill-box 在 <use> 上的浏览器差异。
+     dur=0.78s + delay=0.18s，linear。
+     旋转：-180° → 0°（真·逆时针 CCW 半圈，经过 -90° → 头朝左 → 转正）
+     缩放：4.50 → 0.91（轻 undershoot）→ 1.015（轻 overshoot）→ 1
+     透明度：0 → 1 */
+  @keyframes chip-in {
+    0%   { transform: translate(1920px,1080px) rotate(-180deg) scale(4.50) translate(-1920px,-1080px); opacity: 0;    }
+    5%   { transform: translate(1920px,1080px) rotate(-170deg) scale(4.30) translate(-1920px,-1080px); opacity: 0.55; }
+    18%  { transform: translate(1920px,1080px) rotate(-140deg) scale(3.60) translate(-1920px,-1080px); opacity: 0.85; }
+    32%  { transform: translate(1920px,1080px) rotate(-100deg) scale(2.50) translate(-1920px,-1080px); opacity: 0.95; }
+    48%  { transform: translate(1920px,1080px) rotate(-55deg)  scale(1.40) translate(-1920px,-1080px); opacity: 1;    }
+    62%  { transform: translate(1920px,1080px) rotate(-22deg)  scale(0.96) translate(-1920px,-1080px); opacity: 1;    }
+    74%  { transform: translate(1920px,1080px) rotate(-8deg)   scale(0.91) translate(-1920px,-1080px); opacity: 1;    }
+    86%  { transform: translate(1920px,1080px) rotate(-2deg)   scale(0.97) translate(-1920px,-1080px); opacity: 1;    }
+    94%  { transform: translate(1920px,1080px) rotate(0deg)    scale(1.015)translate(-1920px,-1080px); opacity: 1;    }
+    100% { transform: translate(1920px,1080px) rotate(0deg)    scale(1.00) translate(-1920px,-1080px); opacity: 1;    }
+  }
+
+  /* 左上组：从远处左上进入 → 越过最终位置略偏右下（多靠拢）→ 回弹至最终（回弹量已减弱） */
+  @keyframes converge-TL {
+    0%   { transform: translate(-2400px, -1500px); }
+    60%  { transform: translate(100px, 60px); }
+    82%  { transform: translate(-25px, -15px); }
+    100% { transform: translate(0, 0); }
+  }
+  /* 右下组：对称 */
+  @keyframes converge-BR {
+    0%   { transform: translate(2400px, 1500px); }
+    60%  { transform: translate(-100px, -60px); }
+    82%  { transform: translate(25px, 15px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  /* Slide / HOLD：从左下方滑向右上方 */
+  @keyframes slide-BL-to-TR {
+    0%   { transform: translate(-2400px, 1500px); opacity: 0; }
+    18%  { opacity: 1; }
+    100% { transform: translate(0, 0); opacity: 1; }
+  }
+
+  /* ===== 应用到 SVG 图层（按 ID） ===== */
+
+  /* 滴拉熊（注意：不设 transform-box，由 keyframes 里的显式 translate 控制变换中心） */
+  #滴拉熊 {
+    animation: chip-in var(--dur-chip) linear both;
+    animation-delay: 0.10s;
+  }
+
+  /* 底板：左上 / 右下 */
+  #左上小方块, #左上底板 {
+    animation: converge-TL var(--dur-base) linear both;
+  }
+  #右下小方块, #右下底板 {
+    animation: converge-BR var(--dur-base) linear both;
+  }
+
+  /* 两角淡紫 */
+  #两角淡紫 > [id="左上"] {
+    animation: converge-TL var(--dur-purple) linear both;
+    animation-delay: 0.03s;
+  }
+  #两角淡紫 > [id="右下"] {
+    animation: converge-BR var(--dur-purple) linear both;
+    animation-delay: 0.03s;
+  }
+
+  /* 两角白色（最上层，最后落位） */
+  #两角白色 > [id="左上"] {
+    animation: converge-TL var(--dur-white) linear both;
+    animation-delay: 0.05s;
+  }
+  #两角白色 > [id="右下"] {
+    animation: converge-BR var(--dur-white) linear both;
+    animation-delay: 0.05s;
+  }
+
+  /* HOLD / Slide：每条单独从左下飞入；ease-out 缓动（由快到慢）；随机时长由 JS 注入 */
+  #HOLD > use, #Slide > use {
+    transform-box: fill-box;
+    animation-name: slide-BL-to-TR;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);  /* easeOutExpo-ish：起始快、末尾慢 */
+    animation-fill-mode: both;
+    animation-duration: var(--dur-bg);
+    animation-delay: 0s;
+  }
+
+  /* 右上角控制条 */
+  .controls {
+    position: fixed;
+    top: 12px; right: 12px;
+    z-index: 10;
+    display: flex; gap: 8px;
+    font: 13px/1 system-ui, sans-serif;
+  }
+  .controls button {
+    padding: 6px 12px;
+    background: rgba(255,255,255,.9);
+    border: 1px solid #888;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .controls button:hover { background: #fff; }
+</style>
+</head>
+<body>
+  <div class="controls">
+    <button id="btn-replay">重播入场</button>
+  </div>
+  <div class="stage">
+    <div class="frame" id="frame"></div>
+  </div>
+
+<script>
+  const frame = document.getElementById('frame');
+
+  /* 为每个 slide / hold 注入随机化的 duration / delay，制造“由快到慢、彼此错位”的锥体感 */
+  function jitterSlides(root) {
+    const all = root.querySelectorAll('#HOLD > use, #Slide > use');
+    all.forEach(el => {
+      const dur   = 0.55 + Math.random() * 0.25;  // 0.55 ~ 0.80s（与其他元素同节奏）
+      const delay = Math.random() * 0.06;          // 0   ~ 0.06s
+      el.style.animationDuration = dur.toFixed(3) + 's';
+      el.style.animationDelay    = delay.toFixed(3) + 's';
+    });
+  }
+
+  /* 入场期间把滴拉熊提到 SVG 末尾（绘制顺序最顶层），让"大圆盘半透明"阶段叠加在所有图层之上。
+     稳态时角部三角不覆盖中心区域，所以永久置顶不会影响视觉。 */
+  function elevateChip(root) {
+    const svg = root.querySelector('svg');
+    if (!svg) return;
+    const chip = svg.querySelector('#滴拉熊');
+    if (chip) svg.appendChild(chip);
+  }
+
+  async function loadSVG() {
+    const res = await fetch('舞萌转场复刻_16比9.svg');
+    const text = await res.text();
+    frame.innerHTML = text;
+    elevateChip(frame);
+    jitterSlides(frame);
+  }
+
+  function replay() {
+    const svg = frame.querySelector('svg');
+    if (!svg) return;
+    const clone = svg.cloneNode(true);
+    svg.replaceWith(clone);
+    elevateChip(frame);
+    jitterSlides(frame);
+  }
+
+  document.getElementById('btn-replay').addEventListener('click', replay);
+
+  loadSVG();
+</script>
+</body>
+</html>

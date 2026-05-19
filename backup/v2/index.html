@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>舞萌 Festival 转场复刻 · 入场</title>
+<style>
+  :root {
+    /* 整体入场 ≈ 视频 0~55 帧 ≈ 0.92s，保留一点缓出余量 */
+    --dur-chip:   0.95s;   /* 滴拉熊 zoom + 旋转 */
+    --dur-base:   0.75s;   /* 底板 + 小方块 */
+    --dur-purple: 0.78s;   /* 两角淡紫 */
+    --dur-white:  0.78s;   /* 两角白色 */
+    --dur-bg:     0.65s;   /* HOLD / Slide 背景斜线 */
+  }
+
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: #1a1a1a;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+  }
+
+  /* 16:9 居中舞台 */
+  .stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stage > .frame {
+    aspect-ratio: 16 / 9;
+    width: min(100vw, calc(100vh * 16 / 9));
+    height: min(100vh, calc(100vw * 9 / 16));
+    background: #ffffff;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 32px rgba(0,0,0,.5);
+  }
+  .stage svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ===== 动画关键帧 ===== */
+
+  /* 滴拉熊：始终居中。scale 3.2 → 0.86 (缩过头) → 1.04 → 1；顺时针 360° → 0°；透明 → 不透明 */
+  @keyframes chip-in {
+    0%   { transform: rotate(380deg) scale(3.2); opacity: 0; }
+    18%  { opacity: 0.55; }
+    62%  { transform: rotate(28deg)  scale(0.86); opacity: 1; }
+    82%  { transform: rotate(-6deg)  scale(1.04); opacity: 1; }
+    100% { transform: rotate(0deg)   scale(1);    opacity: 1; }
+  }
+
+  /* 左上组：从远处左上进入 → 越过最终位置略偏右下（多靠拢）→ 回弹至最终 */
+  @keyframes converge-TL {
+    0%   { transform: translate(-2400px, -1500px); }
+    60%  { transform: translate(220px, 130px); }
+    82%  { transform: translate(-70px, -42px); }
+    100% { transform: translate(0, 0); }
+  }
+  /* 右下组：对称 */
+  @keyframes converge-BR {
+    0%   { transform: translate(2400px, 1500px); }
+    60%  { transform: translate(-220px, -130px); }
+    82%  { transform: translate(70px, 42px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  /* Slide / HOLD：从左下方滑向右上方 */
+  @keyframes slide-BL-to-TR {
+    0%   { transform: translate(-2400px, 1500px); opacity: 0; }
+    18%  { opacity: 1; }
+    100% { transform: translate(0, 0); opacity: 1; }
+  }
+
+  /* ===== 应用到 SVG 图层（按 ID） ===== */
+
+  /* 滴拉熊 */
+  #滴拉熊 {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: chip-in var(--dur-chip) linear both;
+    animation-delay: 0.00s;
+  }
+
+  /* 底板：左上 / 右下 */
+  #左上小方块, #左上底板 {
+    animation: converge-TL var(--dur-base) linear both;
+  }
+  #右下小方块, #右下底板 {
+    animation: converge-BR var(--dur-base) linear both;
+  }
+
+  /* 两角淡紫 */
+  #两角淡紫 > [id="左上"] {
+    animation: converge-TL var(--dur-purple) linear both;
+    animation-delay: 0.05s;
+  }
+  #两角淡紫 > [id="右下"] {
+    animation: converge-BR var(--dur-purple) linear both;
+    animation-delay: 0.05s;
+  }
+
+  /* 两角白色（最上层，最后落位） */
+  #两角白色 > [id="左上"] {
+    animation: converge-TL var(--dur-white) linear both;
+    animation-delay: 0.10s;
+  }
+  #两角白色 > [id="右下"] {
+    animation: converge-BR var(--dur-white) linear both;
+    animation-delay: 0.10s;
+  }
+
+  /* HOLD / Slide：每条单独从左下飞入；linear + 关键帧曲线 = 由快到慢；随机时长由 JS 注入 */
+  #HOLD > use, #Slide > use {
+    transform-box: fill-box;
+    animation-name: slide-BL-to-TR;
+    animation-timing-function: linear;
+    animation-fill-mode: both;
+    animation-duration: var(--dur-bg);
+    animation-delay: 0s;
+  }
+
+  /* 右上角控制条 */
+  .controls {
+    position: fixed;
+    top: 12px; right: 12px;
+    z-index: 10;
+    display: flex; gap: 8px;
+    font: 13px/1 system-ui, sans-serif;
+  }
+  .controls button {
+    padding: 6px 12px;
+    background: rgba(255,255,255,.9);
+    border: 1px solid #888;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .controls button:hover { background: #fff; }
+</style>
+</head>
+<body>
+  <div class="controls">
+    <button id="btn-replay">重播入场</button>
+  </div>
+  <div class="stage">
+    <div class="frame" id="frame"></div>
+  </div>
+
+<script>
+  const frame = document.getElementById('frame');
+
+  /* 为每个 slide / hold 注入随机化的 duration / delay，制造"由快到慢、彼此错位"的锥体感 */
+  function jitterSlides(root) {
+    const all = root.querySelectorAll('#HOLD > use, #Slide > use');
+    all.forEach(el => {
+      const dur   = 0.40 + Math.random() * 0.30;  // 0.40 ~ 0.70s
+      const delay = Math.random() * 0.08;          // 0   ~ 0.08s
+      el.style.animationDuration = dur.toFixed(3) + 's';
+      el.style.animationDelay    = delay.toFixed(3) + 's';
+    });
+  }
+
+  /* 入场期间把滴拉熊提到 SVG 末尾（绘制顺序最顶层），让"大圆盘半透明"阶段叠加在所有图层之上。
+     稳态时角部三角不覆盖中心区域，所以永久置顶不会影响视觉。 */
+  function elevateChip(root) {
+    const svg = root.querySelector('svg');
+    if (!svg) return;
+    const chip = svg.querySelector('#滴拉熊');
+    if (chip) svg.appendChild(chip);
+  }
+
+  async function loadSVG() {
+    const res = await fetch('舞萌转场复刻_16比9.svg');
+    const text = await res.text();
+    frame.innerHTML = text;
+    elevateChip(frame);
+    jitterSlides(frame);
+  }
+
+  function replay() {
+    const svg = frame.querySelector('svg');
+    if (!svg) return;
+    const clone = svg.cloneNode(true);
+    svg.replaceWith(clone);
+    elevateChip(frame);
+    jitterSlides(frame);
+  }
+
+  document.getElementById('btn-replay').addEventListener('click', replay);
+
+  loadSVG();
+</script>
+</body>
+</html>

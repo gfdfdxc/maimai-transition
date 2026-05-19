@@ -1,0 +1,204 @@
+# 舞萌 Festival 转场复刻 · 交接文档
+
+> 本文档供后续 agent 阅读，继续推进入场/出场动画的复刻工作。
+
+## 1. 任务背景
+
+- 目标：用 HTML / CSS / JS 复刻舞萌 Festival 转场动画（参考视频 `【Festival】舞萌转场复刻_16比9.mov`）。
+- 素材：
+  - 参考视频：1920×1080, 60fps, 150 帧（2.5s），位于工作区根目录。
+  - 静态稳态 SVG：`舞萌转场复刻_16比9.svg`，viewBox `0 0 3840 2160` (16:9)，约 2.8MB，内嵌 ~250+ 个 base64 PNG（多数透明背景，画面白色区域是透明像素露出白底）。
+- 视频时间线：
+  - 帧 0~54：**入场动画**（约 0–900ms）
+  - 帧 55~85：稳态（与 SVG 一致）
+  - 帧 86~149：**出场动画**（尚未实现）
+
+## 2. 已完成
+
+- [x] 用 ffmpeg 把视频拆成 150 张单帧 PNG：`frames/f_001.png` … `frames/f_150.png`
+- [x] 入场动画第一版实现：[index.html](index.html)
+- [x] 启动了本地静态服务：`python -m http.server 8765`，访问 http://localhost:8765/index.html
+- [x] 通过 playwright 截取多组关键时刻验证，并与参考帧 vstack 对比
+
+## 3. SVG 图层结构（必读）
+
+`舞萌转场复刻_16比9.svg` 中各 `<image>` 都在 `<defs>` 中（id `img1`…`img117`），`<use>` 组织如下层级（从底到顶）：
+
+```
+<svg viewBox="0 0 3840 2160">
+  <g id="底板">                  // 背景大色块
+    <g id="左上小方块">           // 装饰像素方块
+    <use id="左上底板" href="#img1" .../>
+    <g id="右下小方块">
+    <use id="右下底板" href="#img33" .../>
+  </g>
+  <use id="滴拉熊" href="#img34" x="1420" y="580"/>   // img34 为 1000×1000，中心刚好 (1920,1080)
+  <g id="HOLD">  ...  </g>      // 8 条 hold 注 (img35-41)
+  <g id="Slide"> ...  </g>      // 6 条 slide (img42-47)
+  <g id="两角淡紫">
+    <g id="右下"> <use="右下粉大三角"/> <g id="右下粉色小方块">...</g> </g>
+    <g id="左上"> <use="左上粉大三角"/> <g id="左上粉色小方块">...</g> </g>
+  </g>
+  <g id="两角白色">              // 与上一组同结构，三角更小，最上层
+    <g id="右下"> ... </g>
+    <g id="左上"> ... </g>
+  </g>
+</svg>
+```
+
+注意：`两角淡紫` 和 `两角白色` 内的 `id="左上"` / `id="右下"` 是重复 ID，CSS 用属性选择器区分：
+`#两角淡紫 > [id="左上"]`、`#两角白色 > [id="右下"]` 等。
+
+## 4. 入场动画规则（来自用户口述 + 多轮迭代澄清）
+
+1. **滴拉熊（chip）**：
+   - **始终居中**（SVG viewBox 中心 = 1920, 1080）
+   - **旋转**：**逆时针 CCW 半圈**，从 **180°（倒置）→ 0°（正立）**。不是多圈。
+   - **缩放**：起始 **scale 4.5**（面包似铺满全屏）→ 0.86（缩过头 undershoot）→ 1.04（回弹 overshoot）→ 1
+   - **透明度**：0 → 1（前期半透明作为大圆盘叠加效果）
+   - **入场期间需置于绘制顺序最顶层**（已在 JS `elevateChip()` 处理）
+   - **出场期间（待实现）**：用户说 “出场是倒置 180°然后转正到 0°”——出场同样从 0°转到 180°且放大？需在实现出场时再确认。
+   - **transform 实现**：不要依赖 `transform-box: fill-box` + `transform-origin`（在 SVG `<use>` 上浏览器行为不一致），改用显式 `transform: translate(1920px,1080px) rotate(α) scale(s) translate(-1920px,-1080px)`。
+2. **左上 / 右下 子层**（底板小方块、底板、两角淡紫、两角白色 各 4 组）：
+   - 从远处对角线方向飞入
+   - 带 **overshoot**：越过最终位置一点（多靠拢）→ 再回弹至最终位置
+3. **Slide / HOLD**：每条单独从 **左下 → 右上** 滑入；每条 duration / delay 略有差异，由 JS `jitterSlides()` 随机注入（0.40-0.70s）
+
+## 5. 当前实现要点（v9b，最新）
+
+文件：[index.html](index.html)
+
+- 用 `fetch()` 加载 SVG，把整段 SVG 文本 `innerHTML` 注入 `.frame` 容器
+- CSS 关键帧均使用 `linear` timing-function + 关键帧百分比布置缓动（避免 `cubic-bezier` 与关键帧 % 互相干扰导致“前期一闪而过”）
+- chip 用 **显式 `translate(1920px,1080px) rotate scale translate(-1920px,-1080px)`** 让变换围绕 viewBox 中心（不再依赖 transform-box: fill-box）
+- 角组用 SVG userspace 的 `translate(...)` 做对角线滑入
+- `elevateChip()` 在加载后立刻把 chip 移到 SVG 末尾，使其在所有图层之上绘制；稳态时角组三角不覆盖中心区域，所以永久置顶视觉无副作用
+- `jitterSlides()` 给每个 `#HOLD > use` 和 `#Slide > use` 注入随机 `animation-duration` / `animation-delay`
+
+当前 duration 配置（CSS 变量）：
+
+| 变量 | 值 | 含义 |
+|------|----|------|
+| `--dur-chip` | **0.78s** | 滴拉熊整体（+ delay 0.18s） |
+| `--dur-base` | 0.75s | 底板（含小方块） |
+| `--dur-purple` | 0.78s | 两角淡紫，delay 0.05s |
+| `--dur-white` | 0.78s | 两角白色，delay 0.10s |
+| `--dur-bg` | 0.65s | slide/hold 默认 |
+
+chip 的 keyframes（v9b）：
+```
+0%   rotate(180) scale(4.50) opacity 0     // 倒置、铺满、不可见
+5%   rotate(170) scale(4.30) opacity 0.55
+18%  rotate(140) scale(3.60) opacity 0.85
+32%  rotate(100) scale(2.50) opacity 0.95
+48%  rotate( 55) scale(1.40) opacity 1
+62%  rotate( 20) scale(0.92) opacity 1
+78%  rotate(  4) scale(0.86) opacity 1     // undershoot
+92%  rotate( -1) scale(1.04) opacity 1     // overshoot
+100% rotate(  0) scale(1.00) opacity 1
+```
+
+## 6. 验证结果
+
+最新对比图：[cmp_final5.png](cmp_final5.png)（上=参考视频帧 10/15/22/30/40/55，下=我方对应时刻）
+
+- ✓ 稳态匹配（参考 f55 vs `shot_steady.png`）
+- ✓ 三轴叠加层级正确：底板 < 角组 < chip
+- ✓ chip 旋转方向正确（CCW 半圈 180°→20°）
+- ✓ chip 起始 scale 足够大（4.5x 铺满屏幕）
+- ✓ chip f10 不可见、f15 半透明铺满、f22 大半透明——节奏与参考重合
+- ⚠ f30/f40 我方 chip 还在旋转/缩小过程，参考已接近稳态（略偏慢 ~50-80ms）——可微调 dur 到0.70s 或调关键帧百分比
+- ⚠ 参考 f10/f15 里的“散落灰色像素”是角组进入时的运动模糊拖尾（视频压缩产生），静态代码不会出现
+
+## 7. 用户标注的已知问题（已澄清）
+
+- ✅ "白色扫光"误判：参考视频里的"白色对角条"其实是 PNG 透明部分露出白底，**不是额外动画元素**。所有素材都在 SVG 里
+- ✅ chip 入场是"大→小→略放大"的 overshoot，不是单调缩小
+- ✅ 角组是"靠拢 + overshoot + 回弹"，不是单调滑入
+- ✅ slide 方向是 BL→TR，不是 TR→BL
+- ⚠️ v5_grid.png 中 1400ms 帧异常空白 → 已澄清：那次是用户手动点了"重播"按钮干扰了截图，**不是 bug**
+- ✅ **chip 旋转方向**（v8 → v9 修正）：早期版本用 380°→0°（顺时针 CW + 多转一圈），用户明确否定。正确是 **180°→0°（逆时针 CCW 半圈）**
+- ✅ **chip 起始尺寸**（v8 → v9 修正）：早期 3.2x 不够大，正确是 **4.5x（开场铺满屏幕）**
+- ✅ **chip 入场延迟**（v9 → v9b 修正）：原本 delay=0 导致 chip 比角组先出现且早 ~150ms，正确节奏是 **delay 0.18s + dur 0.78s**（让角组/底板先动一点点再 chip 入场）
+
+## 7.5. 演进历史
+
+| 版本 | chip 旋转 | chip scale 起 | chip delay | chip dur | 备注 |
+|------|----------|--------------|-----------|---------|------|
+| v1-v7 | 多次迭代 (cubic-bezier / linear, 380°/410°/360°) | 3.0~3.2 | 0 | 0.95s | chip 不居中、被角组挡、节奏不准 |
+| v8 | 380°→0° (CW, 多转 ~1 圈) | 3.20 | 0 | 0.95s | 用显式 translate trick 修复居中；但用户否定旋转方向+量+起始大小 |
+| **v9b（当前）** | **180°→0° (CCW, 半圈)** | **4.50** | **0.18s** | **0.78s** | 节奏与参考重合度大幅提升 |
+
+## 8. 下一步建议
+
+候选方向（任选其一/组合）：
+
+1. **微调 chip 后半段节奏**（可选，提升 f30/f40 的匹配度）：
+   - 把 chip 32%/48% 关键帧再往前挪 3-5%，让稳态到达更早
+   - 或 dur 0.78s → 0.72s
+2. **实现出场动画（帧 85-149，约 1.08s）** ← **建议下一步**：
+   - 需要先用密集采样（`ffmpeg ... select='between(n,85,149)',scale=320:180,tile=11x6`）查看出场关键帧序列
+   - 用户口述：出场时 chip 同样是"倒置 180° 然后转正到 0°"——需要再确认具体含义（是入场倒序？还是 chip 反向放大旋转飞出？）
+3. **加播放控制**：进度条、暂停、单帧步进，便于逐帧调试
+
+## 10. 用户偏好与工作约定（必读）
+
+- **每次修改完代码后，必须更新 HANDOFF.md**（用户在 v8→v9 修正时明确要求）
+- **对话结束时不要自己结束对话**，必须用 `vscode_askQuestions` 问下一步要做什么
+- 用户用 zh-CN 沟通；回复保持简短
+- 验证流程：playwright 截图（用 `document.getAnimations()` 暂停+seek currentTime）→ ffmpeg vstack 与 `frames/f_NNN.png` 对比 → `view_image` 看 cmp_finalN.png
+- playwright 截图小坑：
+  - `page.screenshot()` 偶尔会在第一帧 timeout（"waiting for fonts" 完成后挂起几秒）——重试即可
+  - 用 `page.evaluate(()=>{for(const a of document.getAnimations()){a.pause();a.currentTime=tMs}})` 比 `animation-delay: -Xms` 可靠（后者在动画已完成的元素上不会回拨）
+  - 截图前 `await page.evaluate(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))` 让浏览器完成一次合成
+
+## 9. 工程便捷命令
+
+```powershell
+# 启动本地服务
+cd "e:\NewFiles\py训练\舞萌opus复刻_svg"
+python -m http.server 8765
+
+# 拆视频帧（已完成）
+ffmpeg -v error -i "【Festival】舞萌转场复刻_16比9.mov" -vsync 0 "frames/f_%03d.png"
+
+# 生成入场密集网格（55 帧）
+ffmpeg -v error -y -i "【Festival】舞萌转场复刻_16比9.mov" `
+  -vf "select='between(n,1,55)',scale=320:180,tile=11x5" -frames:v 1 frames_grid/grid_in_dense.png
+
+# 生成出场密集网格（用于下一步）
+ffmpeg -v error -y -i "【Festival】舞萌转场复刻_16比9.mov" `
+  -vf "select='between(n,85,149)',scale=320:180,tile=11x6" -frames:v 1 frames_grid/grid_out_dense.png
+```
+
+playwright 截图模板（在 vscode 浏览器工具内）：
+```js
+await page.setViewportSize({ width: 1280, height: 720 });
+await page.goto('http://localhost:8765/index.html?t=' + Date.now(), { waitUntil: 'load' });
+await page.waitForSelector('svg');
+const start = Date.now();
+for (const t of [60, 200, 400, 700, 1000]) {
+  while (Date.now() - start < t) await page.waitForTimeout(5);
+  await page.screenshot({ path: `e:/NewFiles/py训练/舞萌opus复刻_svg/cap_t${t}.png` });
+}
+```
+
+## 10. 用户偏好（沟通约定）
+
+- 用户用 zh-CN 沟通
+- 用户在每轮结束时希望 agent 主动问"下一步要怎么做"（不要自己结束对话）
+- 用户有 ffmpeg 可用，遇到缺失 PNG 资源会补
+- 截图验证 / 工程化的中间产物（v2_*, v3_*, cmp_* 等）可以保留在根目录，不影响
+
+---
+
+**文件清单（根目录）：**
+- `index.html` — 主页面
+- `舞萌转场复刻_16比9.svg` — 原始 SVG 资源
+- `【Festival】舞萌转场复刻_16比9.mov` — 参考视频
+- `frames/` — 150 帧 PNG
+- `frames_grid/` — 关键帧概览网格
+- `cmp_final.png`, `cmp_final2.png` — 与参考视频上下行对比图
+- `v6_grid.png` — 最新版动画进程网格（12 时刻）
+- `shot_steady.png` — 稳态截图
+- `HANDOFF.md` — 本文件

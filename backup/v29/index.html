@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>舞萌 Festival 转场复刻</title>
+<style>
+  :root {
+    /* 参考视频前 ~10 帧（~167ms）画面完全空白，动画从 f10~f12 才开始。所以所有动画统一加 ~170ms 全局延迟 */
+    --t0:         0.17s;   /* 全局起始延迟 */
+    --dur-chip:   0.62s;   /* v41 恢复 v33: 滴拉熊 0.62s（含旋转） */
+    --dur-base:   0.80s;   /* v41 恢复 v33: 底板 */
+    --dur-purple: 0.70s;   /* v41 恢复 v33: 两角淡紫 */
+    --dur-white:  0.68s;   /* v41 恢复 v33: 两角白色 */
+    --dur-bg:     0.75s;   /* v41 恢复 v33: slide/hold (jitter 0.55-0.80s) */
+
+    /* === 出场（基于参考视频 60fps 帧测量） ===
+       f95 = 1.583s 出场启动（chip 先消失）；f110 = 1.833s 底板/两角起；f120 = 2.000s HOLD/SLIDE 起；f149 = 2.483s 全空
+       出场各段大约 0.30-0.40s。 */
+    /* === 出场（v25 重新校准参考视频 60fps 帧实测） ===
+       chip f95→f120（0.42s）：缩 → 光环 → 消散
+       背景 f117→f128（0.18s）：飞出超快
+       f130 后几乎全空。 */
+    --t-exit-chip:   1.62s;
+    --t-exit-base:   1.746s;  /* v44: 底板/HOLD/Slide 在 chip 收缩结束后才启动放大/退场 */
+    --t-exit-bg:     1.746s;
+    --dur-exit-chip: 0.42s;  /* v42 */
+    --dur-exit-base: 0.294s;  /* v44: = chip dur (0.42) * 70%，与 chip 同时刻 2.04s 全退 */
+    --dur-exit-bg:   0.294s;
+  }
+
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: #1a1a1a;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+  }
+
+  /* 16:9 居中舞台 */
+  .stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stage > .frame {
+    aspect-ratio: 16 / 9;
+    width: min(100vw, calc(100vh * 16 / 9));
+    height: min(100vh, calc(100vw * 9 / 16));
+    background: #ffffff;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 32px rgba(0,0,0,.5);
+  }
+  .stage svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ===== 动画关键帧 ===== */
+
+  /* 滴拉熊入场：v41 恢复 v33含旋转 (-180°→0° CCW) + 缩放，透明度 0→1 */
+  @keyframes chip-in {
+    0%   { transform: rotate(-180deg) scale(4.50); opacity: 0;    }
+    5%   { transform: rotate(-170deg) scale(4.30); opacity: 0.55; }
+    18%  { transform: rotate(-140deg) scale(3.60); opacity: 0.85; }
+    32%  { transform: rotate(-100deg) scale(2.50); opacity: 0.95; }
+    48%  { transform: rotate(-55deg)  scale(1.40); opacity: 1;    }
+    62%  { transform: rotate(-22deg)  scale(0.96); opacity: 1;    }
+    74%  { transform: rotate(-8deg)   scale(0.91); opacity: 1;    }
+    86%  { transform: rotate(-2deg)   scale(0.97); opacity: 1;    }
+    94%  { transform: rotate(0deg)    scale(1.015);opacity: 1;    }
+    100% { transform: rotate(0deg)    scale(1.00); opacity: 1;    }
+  }
+
+  /* === 底板：纯单调缓出，不提前锁定位置。
+     v18 中 30% 锁位导致底板“产下出”超快（前 60ms 就走完一半位移），与参考视频不符。 === */
+  @keyframes settle-TL {
+    0%   { transform: translate(-2400px, -1500px); }
+    100% { transform: translate(0, 0); }
+  }
+  @keyframes settle-BR {
+    0%   { transform: translate(2400px, 1500px); }
+    100% { transform: translate(0, 0); }
+  }
+
+  /* === 两角三角（淡紫 / 白色）：v12 回弹关键帧 + 分段 timing function（0→60% 快到慢 ease-out，回弹段 ease-in-out）
+     + 复合 scale(1.06) 以画面中心 (1920,1080) 为锚点 ===
+     这层 scale 让三角向远端方向（左上/右下，画面外）扩展 ~115px / 65px，
+     大于回弹偏移 100/60，保证回弹时远端边缘仍覆盖到屏幕外缘不露背景。
+     由于锚点在画面中心，朝向画面中心的"显示边"（三角斜边）几乎不变。 */
+  @keyframes converge-TL {
+    0%   { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-2400px, -1500px); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+    65%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(100px, 60px);     animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
+    85%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-25px, -15px);    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
+    100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(0, 0); }
+  }
+  @keyframes converge-BR {
+    0%   { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(2400px, 1500px);  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
+    65%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-100px, -60px);   animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
+    85%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(25px, 15px);      animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
+    100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(0, 0); }
+  }
+
+  /* HOLD：从右上方滑向左下方（v45: 45° 对角） */
+  @keyframes slide-TR-to-BL {
+    0%   { transform: translate(2400px, -2400px); opacity: 0; }
+    18%  { opacity: 1; }
+    100% { transform: translate(0, 0); opacity: 1; }
+  }
+  /* SLIDE：从左下方滑向右上方（v45: 45° 对角） */
+  @keyframes slide-BL-to-TR {
+    0%   { transform: translate(-2400px, 2400px); opacity: 0; }
+    18%  { opacity: 1; }
+    100% { transform: translate(0, 0); opacity: 1; }
+  }
+
+  /* ============================================================
+     出场动画：基本是入场的"逆向"，但 HOLD/SLIDE 维持入场方向继续飞出。
+     keyframes 显式声明 from{稳态} → to{终态}；fill-mode 用 forwards
+     （before phase 不应用，让入场动画接管；after phase 保持终态）。
+     ============================================================ */
+
+  /* 滴拉熊：先缩 → 很快开始膊胀 → 后段淡出，无旋转
+     v32 重新校准参考 (dur 0.36s, 起 1.67s)：
+       f100=0%   稳态 scale 1
+       f105=23%  轻微缩 scale 0.88
+       f107=30%  最小 scale 0.82
+       f110=46%  已是中大盘 scale 2.0
+       f115=70%  大盘有洞 scale 3.4 op 0.30
+       f118=85%  几乎消失 scale 4.2 op 0.05
+       f122=100% 完全消失 */
+  /* 滴拉熊出场：先微内收再外放淡出（无旋转） */
+  @keyframes chip-out {
+    0%   { transform: scale(1.00); opacity: 1;    }
+    30%  { transform: scale(0.82); opacity: 1;    }
+    50%  { transform: scale(2.20); opacity: 0.65; }
+    70%  { transform: scale(3.40); opacity: 0.30; }
+    85%  { transform: scale(4.20); opacity: 0.05; }
+    100% { transform: scale(4.60); opacity: 0;    }
+  }
+
+  /* v43: 背景层父组同步 chip-out 缩放节奏 */
+  @keyframes bg-out {
+    0%   { transform: scale(1.00); opacity: 1;    }
+    30%  { transform: scale(0.94); opacity: 1;    }
+    55%  { transform: scale(1.90); opacity: 1;    }
+    75%  { transform: scale(2.90); opacity: 0.55; }
+    90%  { transform: scale(3.70); opacity: 0.15; }
+    100% { transform: scale(4.20); opacity: 0;    }
+  }
+
+  /* v44: 底板只参与放大阶段（在 chip 30%收缩结束后才启动） */
+  @keyframes bg-out-expand {
+    0%   { transform: scale(1.00); opacity: 1;    }
+    35%  { transform: scale(1.90); opacity: 1;    }
+    65%  { transform: scale(2.90); opacity: 0.55; }
+    85%  { transform: scale(3.70); opacity: 0.15; }
+    100% { transform: scale(4.20); opacity: 0;    }
+  }
+
+  /* v46: 底板子层出场 = 入场逆向，分别飞向左上 / 右下角外 */
+  @keyframes expand-TL  {
+    0%   { transform: translate(0, 0);              opacity: 1;    }
+    70%  { transform: translate(-1680px,-1050px);    opacity: 0.55; }
+    100% { transform: translate(-2400px,-1500px);    opacity: 0;    }
+  }
+  @keyframes expand-BR  {
+    0%   { transform: translate(0, 0);              opacity: 1;    }
+    70%  { transform: translate( 1680px, 1050px);    opacity: 0.55; }
+    100% { transform: translate( 2400px, 1500px);    opacity: 0;    }
+  }
+  @keyframes converge-TL-out {
+    0%,100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px); }
+  }
+  @keyframes converge-BR-out {
+    0%,100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px); }
+  }
+
+  /* HOLD：继续向左下方向飞出（v29: 45° 对角，与 slide 条本身方向一致） */
+  @keyframes slide-TR-to-BL-out {
+    from { transform: translate(0, 0);                opacity: 1; }
+    to   { transform: translate(-2200px, 2200px);     opacity: 0; }
+  }
+  /* SLIDE：继续向右上方向飞出（v29: 45° 对角，修复“偏右”） */
+  @keyframes slide-BL-to-TR-out {
+    from { transform: translate(0, 0);                opacity: 1; }
+    to   { transform: translate( 2200px,-2200px);     opacity: 0; }
+  }
+
+  /* ===== 应用到 SVG 图层（按 ID） ===== */
+  /* v43/v44: 两角淡紫/白色 跟 chip 同步（收缩+放大）；底板只参与放大 */
+  #两角淡紫, #两角白色 {
+    transform-box: view-box;
+    transform-origin: 50% 50%;
+    animation-name: bg-out;
+    animation-duration: var(--dur-exit-chip);
+    animation-timing-function: linear;
+    animation-delay: var(--t-exit-chip);
+    animation-fill-mode: forwards;
+  }
+  /* v46: #底板 父组不参与 scale 出场（由子层 expand-TL/BR 各自飞向角落） */
+  /* 滴拉熊：view-box + 50%/50% origin，让 rotate/scale 围绕 viewBox 中心 (1920,1080) */
+  #滴拉熊 {
+    transform-box: view-box;
+    transform-origin: 50% 50%;
+    animation-name:            chip-in,                                chip-out;
+    animation-duration:        var(--dur-chip),                         var(--dur-exit-chip);
+    animation-timing-function: linear,                                  linear;
+    animation-delay:           calc(var(--t0) - 0.02s),                 var(--t-exit-chip);
+    animation-fill-mode:       both,                                    forwards;
+  }
+
+  /* 底板：左上 / 右下；入场缓出 + 出场缓入飞回角外 */
+  #左上小方块, #左上底板 {
+    animation-name:            settle-TL,                               expand-TL;
+    animation-duration:        var(--dur-base),                         var(--dur-exit-base);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1),          linear;
+    animation-delay:           var(--t0),                               var(--t-exit-base);
+    animation-fill-mode:       both,                                    forwards;
+  }
+  #右下小方块, #右下底板 {
+    animation-name:            settle-BR,                               expand-BR;
+    animation-duration:        var(--dur-base),                         var(--dur-exit-base);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1),          linear;
+    animation-delay:           var(--t0),                               var(--t-exit-base);
+    animation-fill-mode:       both,                                    forwards;
+  }
+
+  /* 两角淡紫 */
+  #两角淡紫 > [id="左上"] {
+    animation-name:            converge-TL,                             converge-TL-out;
+    animation-duration:        var(--dur-purple),                       var(--dur-exit-base);
+    animation-timing-function: linear,                                  linear;
+    animation-delay:           var(--t0),                               var(--t-exit-base);
+    animation-fill-mode:       both,                                    forwards;
+  }
+  #两角淡紫 > [id="右下"] {
+    animation-name:            converge-BR,                             converge-BR-out;
+    animation-duration:        var(--dur-purple),                       var(--dur-exit-base);
+    animation-timing-function: linear,                                  linear;
+    animation-delay:           var(--t0),                               var(--t-exit-base);
+    animation-fill-mode:       both,                                    forwards;
+  }
+
+  /* 两角白色（最上层） */
+  #两角白色 > [id="左上"] {
+    animation-name:            converge-TL,                             converge-TL-out;
+    animation-duration:        var(--dur-white),                        var(--dur-exit-base);
+    animation-timing-function: linear,                                  linear;
+    animation-delay:           var(--t0),                               var(--t-exit-base);
+    animation-fill-mode:       both,                                    forwards;
+  }
+  #两角白色 > [id="右下"] {
+    animation-name:            converge-BR,                             converge-BR-out;
+    animation-duration:        var(--dur-white),                        var(--dur-exit-base);
+    animation-timing-function: linear,                                  linear;
+    animation-delay:           var(--t0),                               var(--t-exit-base);
+    animation-fill-mode:       both,                                    forwards;
+  }
+
+  /* HOLD：入场 右上→左下；出场 继续向左下方向飞出（JS jitter 覆盖 duration/delay 列表） */
+  #HOLD > use {
+    transform-box: fill-box;
+    animation-name: slide-TR-to-BL, slide-TR-to-BL-out;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.55, 0, 1, 0.45);
+    animation-fill-mode: both, forwards;
+    animation-duration: var(--dur-bg), var(--dur-exit-bg);
+    animation-delay: var(--t0), var(--t-exit-bg);
+  }
+  /* SLIDE：入场 左下→右上；出场 继续向右上方向飞出 */
+  #Slide > use {
+    transform-box: fill-box;
+    animation-name: slide-BL-to-TR, slide-BL-to-TR-out;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.55, 0, 1, 0.45);
+    animation-fill-mode: both, forwards;
+    animation-duration: var(--dur-bg), var(--dur-exit-bg);
+    animation-delay: var(--t0), var(--t-exit-bg);
+  }
+
+  /* 右上角控制条 */
+  .controls {
+    position: fixed;
+    top: 12px; right: 12px;
+    z-index: 10;
+    display: flex; gap: 8px;
+    font: 13px/1 system-ui, sans-serif;
+  }
+  .controls button {
+    padding: 6px 12px;
+    background: rgba(255,255,255,.9);
+    border: 1px solid #888;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .controls button:hover { background: #fff; }
+</style>
+</head>
+<body>
+  <div class="controls">
+    <button id="btn-replay">重播</button>
+  </div>
+  <div class="stage">
+    <div class="frame" id="frame"></div>
+  </div>
+
+<script>
+  const frame = document.getElementById('frame');
+
+  /* 为每个 slide / hold 注入随机化的 duration / delay；同时覆盖入场+出场两段 */
+  function jitterSlides(root) {
+    const all = root.querySelectorAll('#HOLD > use, #Slide > use');
+    all.forEach(el => {
+      const durIn    = 0.55 + Math.random() * 0.25;  // v41 恢复 v33: 入场 0.55~0.80s
+      const delayIn  = 0.17 + Math.random() * 0.06;  // 入场 t0 0.17 + 0~0.06s
+      const durOut   = 0.15 + Math.random() * 0.03;  // v47: 0.15~0.18s
+      const delayOut = 1.583 + Math.random() * 0.04; // v47: 参考视频 f95(1.583s) 起退场，~f105(1.75s) 退完
+      el.style.animationDuration = `${durIn.toFixed(3)}s, ${durOut.toFixed(3)}s`;
+      el.style.animationDelay    = `${delayIn.toFixed(3)}s, ${delayOut.toFixed(3)}s`;
+    });
+  }
+
+  /* 入场期间把滴拉熊提到 SVG 末尾（绘制顺序最顶层），让"大圆盘半透明"阶段叠加在所有图层之上。
+     稳态时角部三角不覆盖中心区域，所以永久置顶不会影响视觉。 */
+  function elevateChip(root) {
+    const svg = root.querySelector('svg');
+    if (!svg) return;
+    const chip = svg.querySelector('#滴拉熊');
+    if (chip) svg.appendChild(chip);
+  }
+
+  async function loadSVG() {
+    const res = await fetch('舞萌转场复刻_16比9.svg');
+    const text = await res.text();
+    frame.innerHTML = text;
+    elevateChip(frame);
+    jitterSlides(frame);
+  }
+
+  function replay() {
+    const svg = frame.querySelector('svg');
+    if (!svg) return;
+    const clone = svg.cloneNode(true);
+    svg.replaceWith(clone);
+    elevateChip(frame);
+    jitterSlides(frame);
+  }
+
+  document.getElementById('btn-replay').addEventListener('click', replay);
+
+  loadSVG();
+</script>
+</body>
+</html>

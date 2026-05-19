@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<title>舞萌 Festival 转场复刻 · 入场</title>
+<style>
+  :root {
+    /* 整体入场时长 ~= 视频帧 0~55 ≈ 0.917s，加一点缓出 */
+    --dur-bg-line: 0.65s;          /* HOLD / Slide 背景条 */
+    --dur-base: 0.80s;             /* 底板 + 小方块 */
+    --dur-chip: 1.05s;             /* 滴拉熊 zoom-in */
+    --dur-purple: 0.85s;           /* 两角淡紫大三角 */
+    --dur-white: 0.85s;            /* 两角白色小三角 */
+    --ease: cubic-bezier(.18,.86,.28,1);
+    --ease-chip: cubic-bezier(.22,1.0,.32,1);
+  }
+
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    background: #1a1a1a;
+    overflow: hidden;
+    font-family: system-ui, sans-serif;
+  }
+
+  /* 16:9 居中舞台 */
+  .stage {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .stage > .frame {
+    aspect-ratio: 16 / 9;
+    width: min(100vw, calc(100vh * 16 / 9));
+    height: min(100vh, calc(100vw * 9 / 16));
+    background: #ffffff;
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 0 32px rgba(0,0,0,.5);
+  }
+  .stage svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* ===== 动画关键帧 ===== */
+  /* 沿对角线从右上方向飞入（适用于 Slide / HOLD 背景斜线） */
+  @keyframes slide-from-TR {
+    from { transform: translate(2400px, -1500px); opacity: 0; }
+    25%  { opacity: 1; }
+    to   { transform: translate(0, 0); opacity: 1; }
+  }
+  /* 左上半的底板 + 装饰小方块，从左上方向飞入 */
+  @keyframes slide-from-TL {
+    from { transform: translate(-2200px, -1400px); }
+    to   { transform: translate(0, 0); }
+  }
+  /* 右下半的底板 + 装饰小方块，从右下方向飞入 */
+  @keyframes slide-from-BR {
+    from { transform: translate(2200px, 1400px); }
+    to   { transform: translate(0, 0); }
+  }
+  /* 左上大三角（淡紫 / 白）从左上更远处飞入，并轻微缩放 */
+  @keyframes slide-from-TL-tri {
+    from { transform: translate(-2600px, -1500px) scale(1.08); }
+    to   { transform: translate(0, 0) scale(1); }
+  }
+  @keyframes slide-from-BR-tri {
+    from { transform: translate(2600px, 1500px) scale(1.08); }
+    to   { transform: translate(0, 0) scale(1); }
+  }
+  /* 滴拉熊：先放大居中，然后缩回原位 */
+  @keyframes chip-zoom {
+    0%   { transform: translate(-1100px, -650px) scale(2.8); opacity: 0; }
+    18%  { opacity: 1; }
+    100% { transform: translate(0, 0) scale(1); opacity: 1; }
+  }
+
+  /* ===== 应用到具体图层（按 SVG ID） ===== */
+  /* 背景斜线（Slide / HOLD），最先出现 */
+  #HOLD  { animation: slide-from-TR var(--dur-bg-line) var(--ease) both;
+           animation-delay: 0s; }
+  #Slide { animation: slide-from-TR var(--dur-bg-line) var(--ease) both;
+           animation-delay: 0.04s; }
+
+  /* 左上 / 右下 底板（含装饰小方块），从各自对角飞入 */
+  #左上小方块, #左上底板 {
+    animation: slide-from-TL var(--dur-base) var(--ease) both;
+    animation-delay: 0.06s;
+  }
+  #右下小方块, #右下底板 {
+    animation: slide-from-BR var(--dur-base) var(--ease) both;
+    animation-delay: 0.06s;
+  }
+
+  /* 滴拉熊：从大到小 */
+  #滴拉熊 {
+    transform-box: fill-box;
+    transform-origin: 50% 50%;
+    animation: chip-zoom var(--dur-chip) var(--ease-chip) both;
+    animation-delay: 0.08s;
+  }
+
+  /* 两角淡紫大三角（属性选择器避免重复 id 冲突） */
+  #两角淡紫 > [id="左上"] {
+    transform-box: fill-box;
+    transform-origin: 0 0;
+    animation: slide-from-TL-tri var(--dur-purple) var(--ease) both;
+    animation-delay: 0.16s;
+  }
+  #两角淡紫 > [id="右下"] {
+    transform-box: fill-box;
+    transform-origin: 100% 100%;
+    animation: slide-from-BR-tri var(--dur-purple) var(--ease) both;
+    animation-delay: 0.16s;
+  }
+
+  /* 两角白色小三角（最上层，最后落位） */
+  #两角白色 > [id="左上"] {
+    transform-box: fill-box;
+    transform-origin: 0 0;
+    animation: slide-from-TL-tri var(--dur-white) var(--ease) both;
+    animation-delay: 0.22s;
+  }
+  #两角白色 > [id="右下"] {
+    transform-box: fill-box;
+    transform-origin: 100% 100%;
+    animation: slide-from-BR-tri var(--dur-white) var(--ease) both;
+    animation-delay: 0.22s;
+  }
+
+  /* 右上角控制条 */
+  .controls {
+    position: fixed;
+    top: 12px; right: 12px;
+    z-index: 10;
+    display: flex; gap: 8px;
+    font: 13px/1 system-ui, sans-serif;
+  }
+  .controls button {
+    padding: 6px 12px;
+    background: rgba(255,255,255,.9);
+    border: 1px solid #888;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  .controls button:hover { background: #fff; }
+</style>
+</head>
+<body>
+  <div class="controls">
+    <button id="btn-replay">重播入场</button>
+  </div>
+  <div class="stage">
+    <div class="frame" id="frame"></div>
+  </div>
+
+<script>
+  const frame = document.getElementById('frame');
+
+  async function loadSVG() {
+    const res = await fetch('舞萌转场复刻_16比9.svg');
+    const text = await res.text();
+    frame.innerHTML = text;
+  }
+
+  function replay() {
+    // 通过克隆 + 替换重置所有 CSS 动画
+    const svg = frame.querySelector('svg');
+    if (!svg) return;
+    const clone = svg.cloneNode(true);
+    svg.replaceWith(clone);
+  }
+
+  document.getElementById('btn-replay').addEventListener('click', replay);
+
+  loadSVG();
+</script>
+</body>
+</html>

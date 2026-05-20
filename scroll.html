@@ -17,9 +17,7 @@
     --t-exit-base:   1.746s;
     --t-exit-bg:     1.746s;
     --dur-exit-chip:   0.42s;
-    --dur-exit-base:   0.70s;
-    --dur-exit-purple: 0.70s;
-    --dur-exit-white:  0.68s;
+    --dur-exit-base:   0.294s;
     --dur-exit-bg:     0.294s;
   }
 
@@ -286,18 +284,12 @@
     70%  { transform: translate( 1680px, 1050px);    opacity: 0.55; }
     100% { transform: translate( 2400px, 1500px);    opacity: 0;    }
   }
-  /* 两角淡紫/白色出场：先向中心回弹，再向角外飞出（与入场节奏一致） */
+  /* 两角淡紫/白色出场：与 v29 一致，父组淡出 + 子层停在中心姿态 */
   @keyframes converge-TL-out {
-    0%   { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(0, 0); }
-    20%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(100px, 60px); }
-    35%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-25px, -15px); }
-    100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-2400px, -1500px); }
+    0%,100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px); }
   }
   @keyframes converge-BR-out {
-    0%   { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(0, 0); }
-    20%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-100px, -60px); }
-    35%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(25px, 15px); }
-    100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(2400px, 1500px); }
+    0%,100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px); }
   }
 
   /* HOLD：继续向左下方向飞出（v29: 45° 对角，与 slide 条本身方向一致） */
@@ -312,6 +304,16 @@
   }
 
   /* ===== 应用到 SVG 图层（按 ID） ===== */
+  #两角淡紫, #两角白色 {
+    transform-box: view-box;
+    transform-origin: 50% 50%;
+    animation-name: bg-out;
+    animation-duration: var(--dur-exit-chip);
+    animation-timing-function: linear;
+    animation-delay: var(--t-exit-chip);
+    animation-fill-mode: forwards;
+  }
+
   #滴拉熊 {
     transform-box: view-box;
     transform-origin: 50% 50%;
@@ -340,14 +342,14 @@
   /* 两角淡紫 */
   #两角淡紫 > [id="左上"] {
     animation-name:            converge-TL,                             converge-TL-out;
-    animation-duration:        var(--dur-purple),                       var(--dur-exit-purple);
+    animation-duration:        var(--dur-purple),                       var(--dur-exit-base);
     animation-timing-function: linear,                                  linear;
     animation-delay:           var(--t0),                               var(--t-exit-base);
     animation-fill-mode:       both,                                    forwards;
   }
   #两角淡紫 > [id="右下"] {
     animation-name:            converge-BR,                             converge-BR-out;
-    animation-duration:        var(--dur-purple),                       var(--dur-exit-purple);
+    animation-duration:        var(--dur-purple),                       var(--dur-exit-base);
     animation-timing-function: linear,                                  linear;
     animation-delay:           var(--t0),                               var(--t-exit-base);
     animation-fill-mode:       both,                                    forwards;
@@ -356,14 +358,14 @@
   /* 两角白色（最上层） */
   #两角白色 > [id="左上"] {
     animation-name:            converge-TL,                             converge-TL-out;
-    animation-duration:        var(--dur-white),                        var(--dur-exit-white);
+    animation-duration:        var(--dur-white),                        var(--dur-exit-base);
     animation-timing-function: linear,                                  linear;
     animation-delay:           var(--t0),                               var(--t-exit-base);
     animation-fill-mode:       both,                                    forwards;
   }
   #两角白色 > [id="右下"] {
     animation-name:            converge-BR,                             converge-BR-out;
-    animation-duration:        var(--dur-white),                        var(--dur-exit-white);
+    animation-duration:        var(--dur-white),                        var(--dur-exit-base);
     animation-timing-function: linear,                                  linear;
     animation-delay:           var(--t0),                               var(--t-exit-base);
     animation-fill-mode:       both,                                    forwards;
@@ -434,8 +436,8 @@
     all.forEach(el => {
       const durIn    = 0.55 + Math.random() * 0.25;
       const delayIn  = 0.17 + Math.random() * 0.06;
-      const durOut   = 0.27 + Math.random() * 0.04;
-      const delayOut = 1.746 + Math.random() * 0.02;
+      const durOut   = 0.15 + Math.random() * 0.03;
+      const delayOut = 1.583 + Math.random() * 0.04;
       el.style.animationDuration = `${durIn.toFixed(3)}s, ${durOut.toFixed(3)}s`;
       el.style.animationDelay    = `${delayIn.toFixed(3)}s, ${delayOut.toFixed(3)}s`;
     });

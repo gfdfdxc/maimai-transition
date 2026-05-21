@@ -23,11 +23,9 @@
     --t-exit-chip:   1.62s;
     --t-exit-base:   1.746s;  /* v44: 底板/HOLD/Slide 在 chip 收缩结束后才启动放大/退场 */
     --t-exit-bg:     1.746s;
-    --dur-exit-chip:   0.42s;  /* v42 */
-    --dur-exit-base:   0.70s;  /* v51: 出场底板缩短以贴近两角结束时刻 */
-    --dur-exit-purple: 0.70s;  /* v48: 出场两角淡紫与入场同速 */
-    --dur-exit-white:  0.68s;  /* v48: 出场两角白色与入场同速 */
-    --dur-exit-bg:     0.294s;
+    --dur-exit-chip: 0.42s;  /* v42 */
+    --dur-exit-base: 0.294s;  /* v44: = chip dur (0.42) * 70%，与 chip 同时刻 2.04s 全退 */
+    --dur-exit-bg:   0.294s;
   }
 
   html, body {
@@ -173,18 +171,11 @@
     70%  { transform: translate( 1680px, 1050px);    opacity: 0.55; }
     100% { transform: translate( 2400px, 1500px);    opacity: 0;    }
   }
-  /* 两角淡紫/白色出场：先向中心回弹，再向角外飞出（与入场节奏一致） */
   @keyframes converge-TL-out {
-    0%   { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(0, 0); }
-    20%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(100px, 60px); }
-    35%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-25px, -15px); }
-    100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-2400px, -1500px); }
+    0%,100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px); }
   }
   @keyframes converge-BR-out {
-    0%   { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(0, 0); }
-    20%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-100px, -60px); }
-    35%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(25px, 15px); }
-    100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(2400px, 1500px); }
+    0%,100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px); }
   }
 
   /* HOLD：继续向左下方向飞出（v29: 45° 对角，与 slide 条本身方向一致） */
@@ -199,6 +190,16 @@
   }
 
   /* ===== 应用到 SVG 图层（按 ID） ===== */
+  /* v43/v44: 两角淡紫/白色 跟 chip 同步（收缩+放大）；底板只参与放大 */
+  #两角淡紫, #两角白色 {
+    transform-box: view-box;
+    transform-origin: 50% 50%;
+    animation-name: bg-out;
+    animation-duration: var(--dur-exit-chip);
+    animation-timing-function: linear;
+    animation-delay: var(--t-exit-chip);
+    animation-fill-mode: forwards;
+  }
   /* v46: #底板 父组不参与 scale 出场（由子层 expand-TL/BR 各自飞向角落） */
   /* 滴拉熊：view-box + 50%/50% origin，让 rotate/scale 围绕 viewBox 中心 (1920,1080) */
   #滴拉熊 {
@@ -230,14 +231,14 @@
   /* 两角淡紫 */
   #两角淡紫 > [id="左上"] {
     animation-name:            converge-TL,                             converge-TL-out;
-    animation-duration:        var(--dur-purple),                       var(--dur-exit-purple);
+    animation-duration:        var(--dur-purple),                       var(--dur-exit-base);
     animation-timing-function: linear,                                  linear;
     animation-delay:           var(--t0),                               var(--t-exit-base);
     animation-fill-mode:       both,                                    forwards;
   }
   #两角淡紫 > [id="右下"] {
     animation-name:            converge-BR,                             converge-BR-out;
-    animation-duration:        var(--dur-purple),                       var(--dur-exit-purple);
+    animation-duration:        var(--dur-purple),                       var(--dur-exit-base);
     animation-timing-function: linear,                                  linear;
     animation-delay:           var(--t0),                               var(--t-exit-base);
     animation-fill-mode:       both,                                    forwards;
@@ -246,14 +247,14 @@
   /* 两角白色（最上层） */
   #两角白色 > [id="左上"] {
     animation-name:            converge-TL,                             converge-TL-out;
-    animation-duration:        var(--dur-white),                        var(--dur-exit-white);
+    animation-duration:        var(--dur-white),                        var(--dur-exit-base);
     animation-timing-function: linear,                                  linear;
     animation-delay:           var(--t0),                               var(--t-exit-base);
     animation-fill-mode:       both,                                    forwards;
   }
   #两角白色 > [id="右下"] {
     animation-name:            converge-BR,                             converge-BR-out;
-    animation-duration:        var(--dur-white),                        var(--dur-exit-white);
+    animation-duration:        var(--dur-white),                        var(--dur-exit-base);
     animation-timing-function: linear,                                  linear;
     animation-delay:           var(--t0),                               var(--t-exit-base);
     animation-fill-mode:       both,                                    forwards;
@@ -313,8 +314,8 @@
     all.forEach(el => {
       const durIn    = 0.55 + Math.random() * 0.25;  // v41 恢复 v33: 入场 0.55~0.80s
       const delayIn  = 0.17 + Math.random() * 0.06;  // 入场 t0 0.17 + 0~0.06s
-      const durOut   = 0.27 + Math.random() * 0.04;  // v44: 0.27~0.31s 与放大阶段同长
-      const delayOut = 1.746 + Math.random() * 0.02; // v44: HOLD/Slide 与 chip 30% 收缩结束同时启动退场
+      const durOut   = 0.15 + Math.random() * 0.03;  // v47: 0.15~0.18s
+      const delayOut = 1.583 + Math.random() * 0.04; // v47: 参考视频 f95(1.583s) 起退场，~f105(1.75s) 退完
       el.style.animationDuration = `${durIn.toFixed(3)}s, ${durOut.toFixed(3)}s`;
       el.style.animationDelay    = `${delayIn.toFixed(3)}s, ${delayOut.toFixed(3)}s`;
     });

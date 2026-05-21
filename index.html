@@ -2,354 +2,493 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<title>舞萌 Festival 转场复刻</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>舞萌 Festival 转场复刻 — SVG 动画 · 滚动驱动 · 点击播放 | Maimai DX Transition</title>
+<meta name="description" content="使用纯 SVG + CSS 动画精确复刻舞萌 Maimai Festival 转场效果。提供点击播放和滚动驱动两种预览模式，支持逐帧分析入场/出场动画曲线。" />
+<meta name="keywords" content="舞萌,Maimai,Festival,转场动画,SVG动画,CSS动画,滚动驱动,点击播放,动画复刻,maimai transition,svg animation,css keyframes" />
+<meta name="author" content="Maimai Transition Replica" />
+<meta name="robots" content="index, follow" />
+<link rel="canonical" href="https://example.com/maimai-festival-transition/" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:title" content="舞萌 Festival 转场复刻 — SVG 动画 · 滚动驱动 · 点击播放" />
+<meta property="og:description" content="使用纯 SVG + CSS 动画精确复刻舞萌 Festival 转场效果。两种预览模式，逐帧可调。" />
+<meta property="og:url" content="https://example.com/maimai-festival-transition/" />
+<meta property="og:image" content="https://example.com/maimai-festival-transition/og-image.png" />
+<meta property="og:locale" content="zh_CN" />
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="舞萌 Festival 转场复刻 — SVG 动画复刻项目" />
+<meta name="twitter:description" content="纯 SVG+CSS 复刻 Maimai DX Festival 转场效果，支持滚动驱动逐帧预览与点击重播。" />
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "舞萌 Festival 转场复刻",
+  "alternateName": "Maimai Festival Transition Replica",
+  "description": "使用纯 SVG + CSS 动画精确复刻舞萌 Maimai Festival 转场效果。提供点击播放和滚动驱动两种预览模式。",
+  "url": "https://example.com/maimai-festival-transition/",
+  "inLanguage": "zh-CN",
+  "about": {
+    "@type": "CreativeWork",
+    "name": "Maimai DX Festival 转场动画",
+    "description": "基于舞萌 Maimai DX Festival 版本官方转场录屏逐帧测量，纯 SVG + CSS animation 实现入场与出场动画曲线。"
+  }
+}
+</script>
 <style>
   :root {
-    /* 参考视频前 ~10 帧（~167ms）画面完全空白，动画从 f10~f12 才开始。所以所有动画统一加 ~170ms 全局延迟 */
-    --t0:         0.17s;   /* 全局起始延迟 */
-    --dur-chip:   0.62s;   /* v41 恢复 v33: 滴拉熊 0.62s（含旋转） */
-    --dur-base:   0.80s;   /* v41 恢复 v33: 底板 */
-    --dur-purple: 0.70s;   /* v41 恢复 v33: 两角淡紫 */
-    --dur-white:  0.68s;   /* v41 恢复 v33: 两角白色 */
-    --dur-bg:     0.75s;   /* v41 恢复 v33: slide/hold (jitter 0.55-0.80s) */
-
-    /* === 出场（基于参考视频 60fps 帧测量） ===
-       f95 = 1.583s 出场启动（chip 先消失）；f110 = 1.833s 底板/两角起；f120 = 2.000s HOLD/SLIDE 起；f149 = 2.483s 全空
-       出场各段大约 0.30-0.40s。 */
-    /* === 出场（v25 重新校准参考视频 60fps 帧实测） ===
-       chip f95→f120（0.42s）：缩 → 光环 → 消散
-       背景 f117→f128（0.18s）：飞出超快
-       f130 后几乎全空。 */
-    --t-exit-chip:   1.62s;
-    --t-exit-base:   1.746s;  /* v44: 底板/HOLD/Slide 在 chip 收缩结束后才启动放大/退场 */
-    --t-exit-bg:     1.746s;
-    --dur-exit-chip: 0.42s;  /* v42 */
-    --dur-exit-base: 0.294s;  /* v44: = chip dur (0.42) * 70%，与 chip 同时刻 2.04s 全退 */
-    --dur-exit-bg:   0.294s;
+    --bg: #f5f4f0;
+    --card-bg: #ffffff;
+    --card-hover: #fafaf8;
+    --accent1: #3b7dd8;
+    --accent2: #d4852c;
+    --text: #2c2c34;
+    --text-secondary: #888894;
   }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
 
   html, body {
-    margin: 0; padding: 0; height: 100%; width: 100%;
-    background: #1a1a1a;
-    overflow: hidden;
-    font-family: system-ui, sans-serif;
+    width: 100%; height: 100%;
+    background: var(--bg);
+    font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    color: var(--text);
+    overflow-x: hidden;
   }
 
-  /* 16:9 居中舞台 */
-  .stage {
-    position: absolute;
+  /* ===== 背景装饰 ===== */
+  body::before {
+    content: '';
+    position: fixed;
     inset: 0;
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 50%, rgba(59,125,216,.08) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 70% at 80% 50%, rgba(212,133,44,.07) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 40% at 50% 30%, rgba(120,120,200,.04) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===== 主体容器 ===== */
+  .container {
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    gap: 3rem;
+  }
+
+  /* ===== 标题区 ===== */
+  .header {
+    text-align: center;
+    margin-bottom: 0.5rem;
+  }
+
+  .header .icon {
+    font-size: 3rem;
+    margin-bottom: 0.5rem;
+    filter: drop-shadow(0 4px 16px rgba(100,100,160,.2));
+  }
+
+  .header h1 {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    background: linear-gradient(135deg, #3b7dd8 0%, #7c6ff0 50%, #d4852c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.4rem;
+  }
+
+  .header .subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    font-weight: 300;
+    letter-spacing: 0.06em;
+  }
+
+  /* ===== 卡片网格 ===== */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 360px));
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 820px;
+    justify-content: center;
+  }
+
+  /* ===== 卡片 ===== */
+  .card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 2rem 1.8rem;
+    background: var(--card-bg);
+    border-radius: 20px;
+    border: 1px solid rgba(0,0,0,.08);
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    transition:
+      transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.3s ease,
+      background 0.3s ease,
+      border-color 0.3s ease;
+    overflow: hidden;
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    background: var(--card-hover);
+    border-color: rgba(0,0,0,.14);
+    box-shadow:
+      0 12px 40px rgba(0,0,0,.1),
+      0 0 0 1px rgba(0,0,0,.04) inset;
+  }
+
+  /* 卡片顶部光泽条 */
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%; height: 2px;
+    border-radius: 0 0 2px 2px;
+    transition: left 0.3s ease, right 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+  }
+
+  .card.card--replay::before { background: linear-gradient(90deg, transparent, #3b7dd8, transparent); }
+  .card.card--scroll::before { background: linear-gradient(90deg, transparent, #d4852c, transparent); }
+
+  .card:hover::before {
+    left: 12%; right: 12%;
+    opacity: 1;
+  }
+
+  /* 卡片图标 */
+  .card .card-icon {
+    font-size: 2.8rem;
+    width: 80px; height: 80px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 50%;
+    transition: transform 0.3s ease;
   }
-  .stage > .frame {
-    aspect-ratio: 16 / 9;
-    width: min(100vw, calc(100vh * 16 / 9));
-    height: min(100vh, calc(100vw * 9 / 16));
-    background: #ffffff;
-    overflow: hidden;
-    position: relative;
-    box-shadow: 0 0 32px rgba(0,0,0,.5);
+
+  .card:hover .card-icon {
+    transform: scale(1.08);
   }
-  .stage svg {
+
+  .card--replay .card-icon {
+    background: rgba(59,125,216,.1);
+    box-shadow: 0 0 40px rgba(59,125,216,.1);
+  }
+
+  .card--scroll .card-icon {
+    background: rgba(212,133,44,.1);
+    box-shadow: 0 0 40px rgba(212,133,44,.1);
+  }
+
+  /* 卡片文字 */
+  .card .card-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+  }
+
+  .card .card-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    text-align: center;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  /* 卡片箭头指示 */
+  .card .card-arrow {
+    margin-top: 0.3rem;
+    font-size: 1.1rem;
+    opacity: 0;
+    transform: translateX(-8px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    color: var(--text-secondary);
+  }
+
+  .card:hover .card-arrow {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  /* ===== 介绍文字 ===== */
+  .intro {
+    max-width: 700px;
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 0.92rem;
+    line-height: 1.8;
+  }
+
+  .intro strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* ===== 特性标签 ===== */
+  .features {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6rem;
+    max-width: 700px;
+  }
+
+  .feature-tag {
+    display: inline-block;
+    padding: 0.35rem 1rem;
+    background: rgba(59,125,216,.08);
+    border-radius: 100px;
+    font-size: 0.82rem;
+    color: #3b7dd8;
+    font-weight: 500;
+  }
+
+  .feature-tag:nth-child(odd) {
+    background: rgba(212,133,44,.08);
+    color: #b8701e;
+  }
+
+  /* ===== FAQ 区域 ===== */
+  .faq {
+    max-width: 700px;
     width: 100%;
-    height: 100%;
-    display: block;
+    margin: 1rem auto 0;
   }
 
-  /* ===== 动画关键帧 ===== */
-
-  /* 滴拉熊入场：v41 恢复 v33含旋转 (-180°→0° CCW) + 缩放，透明度 0→1 */
-  @keyframes chip-in {
-    0%   { transform: rotate(-180deg) scale(4.50); opacity: 0;    }
-    5%   { transform: rotate(-170deg) scale(4.30); opacity: 0.55; }
-    18%  { transform: rotate(-140deg) scale(3.60); opacity: 0.85; }
-    32%  { transform: rotate(-100deg) scale(2.50); opacity: 0.95; }
-    48%  { transform: rotate(-55deg)  scale(1.40); opacity: 1;    }
-    62%  { transform: rotate(-22deg)  scale(0.96); opacity: 1;    }
-    74%  { transform: rotate(-8deg)   scale(0.91); opacity: 1;    }
-    86%  { transform: rotate(-2deg)   scale(0.97); opacity: 1;    }
-    94%  { transform: rotate(0deg)    scale(1.015);opacity: 1;    }
-    100% { transform: rotate(0deg)    scale(1.00); opacity: 1;    }
+  .faq h2 {
+    text-align: center;
+    font-size: 1.2rem;
+    color: var(--text);
+    margin-bottom: 1rem;
+    letter-spacing: 0.03em;
   }
 
-  /* === 底板：纯单调缓出，不提前锁定位置。
-     v18 中 30% 锁位导致底板“产下出”超快（前 60ms 就走完一半位移），与参考视频不符。 === */
-  @keyframes settle-TL {
-    0%   { transform: translate(-2400px, -1500px); }
-    100% { transform: translate(0, 0); }
-  }
-  @keyframes settle-BR {
-    0%   { transform: translate(2400px, 1500px); }
-    100% { transform: translate(0, 0); }
+  .faq-item {
+    background: var(--card-bg);
+    border-radius: 12px;
+    border: 1px solid rgba(0,0,0,.06);
+    padding: 1rem 1.3rem;
+    margin-bottom: 0.6rem;
+    transition: border-color 0.2s;
   }
 
-  /* === 两角三角（淡紫 / 白色）：v12 回弹关键帧 + 分段 timing function（0→60% 快到慢 ease-out，回弹段 ease-in-out）
-     + 复合 scale(1.06) 以画面中心 (1920,1080) 为锚点 ===
-     这层 scale 让三角向远端方向（左上/右下，画面外）扩展 ~115px / 65px，
-     大于回弹偏移 100/60，保证回弹时远端边缘仍覆盖到屏幕外缘不露背景。
-     由于锚点在画面中心，朝向画面中心的"显示边"（三角斜边）几乎不变。 */
-  @keyframes converge-TL {
-    0%   { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-2400px, -1500px); animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
-    65%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(100px, 60px);     animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
-    85%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-25px, -15px);    animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
-    100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(0, 0); }
-  }
-  @keyframes converge-BR {
-    0%   { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(2400px, 1500px);  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1); }
-    65%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(-100px, -60px);   animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
-    85%  { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(25px, 15px);      animation-timing-function: cubic-bezier(0.4, 0, 0.6, 1); }
-    100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px) translate(0, 0); }
+  .faq-item:hover {
+    border-color: rgba(59,125,216,.25);
   }
 
-  /* HOLD：从右上方滑向左下方（v45: 45° 对角） */
-  @keyframes slide-TR-to-BL {
-    0%   { transform: translate(2400px, -2400px); opacity: 0; }
-    18%  { opacity: 1; }
-    100% { transform: translate(0, 0); opacity: 1; }
-  }
-  /* SLIDE：从左下方滑向右上方（v45: 45° 对角） */
-  @keyframes slide-BL-to-TR {
-    0%   { transform: translate(-2400px, 2400px); opacity: 0; }
-    18%  { opacity: 1; }
-    100% { transform: translate(0, 0); opacity: 1; }
-  }
-
-  /* ============================================================
-     出场动画：基本是入场的"逆向"，但 HOLD/SLIDE 维持入场方向继续飞出。
-     keyframes 显式声明 from{稳态} → to{终态}；fill-mode 用 forwards
-     （before phase 不应用，让入场动画接管；after phase 保持终态）。
-     ============================================================ */
-
-  /* 滴拉熊：先缩 → 很快开始膊胀 → 后段淡出，无旋转
-     v32 重新校准参考 (dur 0.36s, 起 1.67s)：
-       f100=0%   稳态 scale 1
-       f105=23%  轻微缩 scale 0.88
-       f107=30%  最小 scale 0.82
-       f110=46%  已是中大盘 scale 2.0
-       f115=70%  大盘有洞 scale 3.4 op 0.30
-       f118=85%  几乎消失 scale 4.2 op 0.05
-       f122=100% 完全消失 */
-  /* 滴拉熊出场：先微内收再外放淡出（无旋转） */
-  @keyframes chip-out {
-    0%   { transform: scale(1.00); opacity: 1;    }
-    30%  { transform: scale(0.82); opacity: 1;    }
-    50%  { transform: scale(2.20); opacity: 0.65; }
-    70%  { transform: scale(3.40); opacity: 0.30; }
-    85%  { transform: scale(4.20); opacity: 0.05; }
-    100% { transform: scale(4.60); opacity: 0;    }
-  }
-
-  /* v43: 背景层父组同步 chip-out 缩放节奏 */
-  @keyframes bg-out {
-    0%   { transform: scale(1.00); opacity: 1;    }
-    30%  { transform: scale(0.94); opacity: 1;    }
-    55%  { transform: scale(1.90); opacity: 1;    }
-    75%  { transform: scale(2.90); opacity: 0.55; }
-    90%  { transform: scale(3.70); opacity: 0.15; }
-    100% { transform: scale(4.20); opacity: 0;    }
-  }
-
-  /* v44: 底板只参与放大阶段（在 chip 30%收缩结束后才启动） */
-  @keyframes bg-out-expand {
-    0%   { transform: scale(1.00); opacity: 1;    }
-    35%  { transform: scale(1.90); opacity: 1;    }
-    65%  { transform: scale(2.90); opacity: 0.55; }
-    85%  { transform: scale(3.70); opacity: 0.15; }
-    100% { transform: scale(4.20); opacity: 0;    }
-  }
-
-  /* v46: 底板子层出场 = 入场逆向，分别飞向左上 / 右下角外 */
-  @keyframes expand-TL  {
-    0%   { transform: translate(0, 0);              opacity: 1;    }
-    70%  { transform: translate(-1680px,-1050px);    opacity: 0.55; }
-    100% { transform: translate(-2400px,-1500px);    opacity: 0;    }
-  }
-  @keyframes expand-BR  {
-    0%   { transform: translate(0, 0);              opacity: 1;    }
-    70%  { transform: translate( 1680px, 1050px);    opacity: 0.55; }
-    100% { transform: translate( 2400px, 1500px);    opacity: 0;    }
-  }
-  @keyframes converge-TL-out {
-    0%,100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px); }
-  }
-  @keyframes converge-BR-out {
-    0%,100% { transform: translate(1920px,1080px) scale(1.06) translate(-1920px,-1080px); }
-  }
-
-  /* HOLD：继续向左下方向飞出（v29: 45° 对角，与 slide 条本身方向一致） */
-  @keyframes slide-TR-to-BL-out {
-    from { transform: translate(0, 0);                opacity: 1; }
-    to   { transform: translate(-2200px, 2200px);     opacity: 0; }
-  }
-  /* SLIDE：继续向右上方向飞出（v29: 45° 对角，修复“偏右”） */
-  @keyframes slide-BL-to-TR-out {
-    from { transform: translate(0, 0);                opacity: 1; }
-    to   { transform: translate( 2200px,-2200px);     opacity: 0; }
-  }
-
-  /* ===== 应用到 SVG 图层（按 ID） ===== */
-  /* v43/v44: 两角淡紫/白色 跟 chip 同步（收缩+放大）；底板只参与放大 */
-  #两角淡紫, #两角白色 {
-    transform-box: view-box;
-    transform-origin: 50% 50%;
-    animation-name: bg-out;
-    animation-duration: var(--dur-exit-chip);
-    animation-timing-function: linear;
-    animation-delay: var(--t-exit-chip);
-    animation-fill-mode: forwards;
-  }
-  /* v46: #底板 父组不参与 scale 出场（由子层 expand-TL/BR 各自飞向角落） */
-  /* 滴拉熊：view-box + 50%/50% origin，让 rotate/scale 围绕 viewBox 中心 (1920,1080) */
-  #滴拉熊 {
-    transform-box: view-box;
-    transform-origin: 50% 50%;
-    animation-name:            chip-in,                                chip-out;
-    animation-duration:        var(--dur-chip),                         var(--dur-exit-chip);
-    animation-timing-function: linear,                                  linear;
-    animation-delay:           calc(var(--t0) - 0.02s),                 var(--t-exit-chip);
-    animation-fill-mode:       both,                                    forwards;
-  }
-
-  /* 底板：左上 / 右下；入场缓出 + 出场缓入飞回角外 */
-  #左上小方块, #左上底板 {
-    animation-name:            settle-TL,                               expand-TL;
-    animation-duration:        var(--dur-base),                         var(--dur-exit-base);
-    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1),          linear;
-    animation-delay:           var(--t0),                               var(--t-exit-base);
-    animation-fill-mode:       both,                                    forwards;
-  }
-  #右下小方块, #右下底板 {
-    animation-name:            settle-BR,                               expand-BR;
-    animation-duration:        var(--dur-base),                         var(--dur-exit-base);
-    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1),          linear;
-    animation-delay:           var(--t0),                               var(--t-exit-base);
-    animation-fill-mode:       both,                                    forwards;
-  }
-
-  /* 两角淡紫 */
-  #两角淡紫 > [id="左上"] {
-    animation-name:            converge-TL,                             converge-TL-out;
-    animation-duration:        var(--dur-purple),                       var(--dur-exit-base);
-    animation-timing-function: linear,                                  linear;
-    animation-delay:           var(--t0),                               var(--t-exit-base);
-    animation-fill-mode:       both,                                    forwards;
-  }
-  #两角淡紫 > [id="右下"] {
-    animation-name:            converge-BR,                             converge-BR-out;
-    animation-duration:        var(--dur-purple),                       var(--dur-exit-base);
-    animation-timing-function: linear,                                  linear;
-    animation-delay:           var(--t0),                               var(--t-exit-base);
-    animation-fill-mode:       both,                                    forwards;
-  }
-
-  /* 两角白色（最上层） */
-  #两角白色 > [id="左上"] {
-    animation-name:            converge-TL,                             converge-TL-out;
-    animation-duration:        var(--dur-white),                        var(--dur-exit-base);
-    animation-timing-function: linear,                                  linear;
-    animation-delay:           var(--t0),                               var(--t-exit-base);
-    animation-fill-mode:       both,                                    forwards;
-  }
-  #两角白色 > [id="右下"] {
-    animation-name:            converge-BR,                             converge-BR-out;
-    animation-duration:        var(--dur-white),                        var(--dur-exit-base);
-    animation-timing-function: linear,                                  linear;
-    animation-delay:           var(--t0),                               var(--t-exit-base);
-    animation-fill-mode:       both,                                    forwards;
-  }
-
-  /* HOLD：入场 右上→左下；出场 继续向左下方向飞出（JS jitter 覆盖 duration/delay 列表） */
-  #HOLD > use {
-    transform-box: fill-box;
-    animation-name: slide-TR-to-BL, slide-TR-to-BL-out;
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.55, 0, 1, 0.45);
-    animation-fill-mode: both, forwards;
-    animation-duration: var(--dur-bg), var(--dur-exit-bg);
-    animation-delay: var(--t0), var(--t-exit-bg);
-  }
-  /* SLIDE：入场 左下→右上；出场 继续向右上方向飞出 */
-  #Slide > use {
-    transform-box: fill-box;
-    animation-name: slide-BL-to-TR, slide-BL-to-TR-out;
-    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1), cubic-bezier(0.55, 0, 1, 0.45);
-    animation-fill-mode: both, forwards;
-    animation-duration: var(--dur-bg), var(--dur-exit-bg);
-    animation-delay: var(--t0), var(--t-exit-bg);
-  }
-
-  /* 右上角控制条 */
-  .controls {
-    position: fixed;
-    top: 12px; right: 12px;
-    z-index: 10;
-    display: flex; gap: 8px;
-    font: 13px/1 system-ui, sans-serif;
-  }
-  .controls button {
-    padding: 6px 12px;
-    background: rgba(255,255,255,.9);
-    border: 1px solid #888;
-    border-radius: 4px;
+  .faq-item summary {
     cursor: pointer;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text);
+    list-style: none;
   }
-  .controls button:hover { background: #fff; }
+
+  .faq-item summary::-webkit-details-marker { display: none; }
+
+  .faq-item summary::before {
+    content: '▸ ';
+    display: inline-block;
+    transition: transform 0.2s;
+    color: #3b7dd8;
+    font-size: 0.8rem;
+  }
+
+  .faq-item[open] summary::before {
+    transform: rotate(90deg);
+  }
+
+  .faq-item .faq-answer {
+    margin-top: 0.6rem;
+    font-size: 0.84rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+  }
+
+  /* ===== 底部 ===== */
+  .footer {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-weight: 300;
+    letter-spacing: 0.05em;
+  }
+
+  .footer a {
+    color: var(--text-secondary);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer a:hover {
+    color: #3b7dd8;
+  }
+
+  .footer .footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.2rem;
+    margin-bottom: 0.5rem;
+  }
+
+  /* ===== 入场动画 ===== */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .header         { animation: fadeUp 0.6s ease both; }
+  .intro          { animation: fadeUp 0.6s 0.05s ease both; }
+  .card:nth-child(1) { animation: fadeUp 0.6s 0.1s ease both; }
+  .card:nth-child(2) { animation: fadeUp 0.6s 0.15s ease both; }
+  .github-link    { animation: fadeUp 0.6s 0.2s ease both; }
+  .faq            { animation: fadeUp 0.6s 0.25s ease both; }
+  .footer         { animation: fadeUp 0.6s 0.3s ease both; }
+
+  /* GitHub 链接 hover */
+  .github-link:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  }
 </style>
 </head>
 <body>
-  <div class="controls">
-    <button id="btn-replay">重播</button>
+  <div class="container">
+    <!-- 标题 -->
+    <div class="header">
+      <div class="icon">🎵</div>
+      <h1>舞萌 Festival 转场复刻</h1>
+      <div class="subtitle">MAIMAI FESTIVAL TRANSITION — 纯 SVG + CSS 动画逐帧复刻</div>
+    </div>
+
+    <!-- 介绍文字 -->
+    <div class="intro">
+      <p>本项目使用 <strong>纯 SVG + CSS animation</strong> 复刻 <strong>舞萌 Maimai DX Festival</strong> 版本中的经典转场动画。基于官方录屏，还原了迪拉熊旋转缩放入场、底板缓出滑入、两角三角回弹、HOLD/SLIDE 条斜向飘入等全部图层效果。</p>
+      <p style="margin-top:0.8rem;font-weight:600;color:var(--text);">✨ 不仅如此，这个转场动画<strong>可以直接用在你的网页中</strong>！只需引入一个 CSS 文件加上对应的 SVG 结构，即可为你的网站添加舞萌风格的页面过渡效果。欢迎在你的项目里使用这个转场！</p>
+    </div>
+
+    <!-- 卡片 -->
+    <div class="cards">
+      <a class="card card--replay" href="transition.html" title="点击播放模式 — 点击按钮触发完整的入场+出场动画">
+        <div class="card-icon">▶</div>
+        <div class="card-title">点击播放模式</div>
+        <div class="card-desc">点击按钮触发完整的入场 + 出场动画。适合查看动画细节与整体节奏，支持反复重播。也欢迎将这个转场用在你的网站中！</div>
+        <div class="card-arrow">进入 →</div>
+      </a>
+
+      <a class="card card--scroll" href="scroll.html" title="滚动驱动模式 — 鼠标滚轮控制动画进度，逐帧预览转场效果">
+        <div class="card-icon">📜</div>
+        <div class="card-title">滚动驱动模式</div>
+        <div class="card-desc">通过鼠标滚轮控制动画进度，逐帧预览转场效果，带前后内容页过渡演示。模拟了转场在真实网页中作为页面切换动画的实际应用场景。</div>
+        <div class="card-arrow">进入 →</div>
+      </a>
+    </div>
+
+    <!-- GitHub 链接 -->
+    <a class="github-link" href="https://github.com/gfdfdxc/maimai-transition" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:0.6rem;padding:0.7rem 1.6rem;background:#24292e;color:#fff;border-radius:12px;text-decoration:none;font-weight:500;font-size:0.9rem;transition:transform 0.2s ease,box-shadow 0.2s ease;animation:fadeUp 0.6s 0.2s ease both;">
+      <svg width="20" height="20" viewBox="0 0 16 16" fill="currentColor" style="flex-shrink:0;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+      ⭐ 在 GitHub 上查看项目：github.com/gfdfdxc/maimai-transition
+    </a>
+
+    <!-- FAQ -->
+    <div class="faq">
+      <h2>常见问题</h2>
+
+      <details class="faq-item">
+        <summary>这个项目的动画来源是什么？</summary>
+      <div class="faq-answer">
+          <p>动画基于 <a href="https://space.bilibili.com/112891212" target="_blank" rel="noopener">@世界三傻</a> 制作的舞萌转场视频，以 <strong>60fps 逐帧测量</strong>的方式提取每个图层的关键帧数据，再用 CSS <code>@keyframes</code> 和 <code>animation</code> 属性精确还原。@世界三傻 的转场视频本身来源于<strong>舞萌 Maimai DX Festival</strong> 官方录屏，在此一并感谢！</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>点击播放模式支持哪些操作？</summary>
+        <div class="faq-answer">
+          <p>页面加载后自动播放一次完整的入场动画（约 1.7 秒），之后处于静止状态。点击右上角<strong>"重播"按钮</strong>可以再次触发完整的入场 + 出场循环。入场阶段滴拉熊会旋转缩放从大到小落定，底板和三角图层依次滑入，HOLD/SLIDE 条带随机化的持续时间和延迟飘入。出场阶段各图层按逆向或飞离方向退场。</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>滚动驱动模式是如何工作的？</summary>
+        <div class="faq-answer">
+          <p>页面设计了 <strong>5 屏（500vh）滚动空间</strong>：前 100vh 展示第一页内容，100vh～300vh 之间由滚动位置驱动转场动画的时间轴（progress 0→1 映射动画的 0→2 秒），300vh～500vh 展示第二页内容。所有 CSS 动画被暂停（<code>animation-play-state: paused</code>），由 JavaScript 读取 <code>scrollY</code> 计算进度并手动设置 <code>currentTime</code>，实现<strong>完全线性可控的逐帧预览</strong>。</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>动画的技术细节有哪些？</summary>
+        <div class="faq-answer">
+          <p>核心技术点包括：</p>
+          <ul>
+            <li><strong>滴拉熊（Chip）入场</strong>：<code>rotate(-180deg → 0deg)</code> 逆时针旋转 + <code>scale(4.5 → 1.0)</code> 缩放，配合透明度 0→1，共 10 个关键帧，时长 0.62s</li>
+            <li><strong>底板缓出</strong>：左上/右下底板分别从 -2400px/-1500px 和 +2400px/+1500px 以 <code>cubic-bezier(0.22,1,0.36,1)</code> 缓出至原点，时长 0.80s</li>
+            <li><strong>两角淡紫/白色三角</strong>：带 scale(1.06) 中心锚点扩展 + 回弹关键帧，确保回弹时远端边缘不露背景</li>
+            <li><strong>HOLD/SLIDE 条</strong>：45° 对角滑入，每个 <code>&lt;use&gt;</code> 元素独立随机化 duration（0.55~0.80s）和 delay（0.17~0.23s），产生自然错落感</li>
+            <li><strong>出场动画</strong>：Chip 先内缩再外放淡出，底板沿入场方向继续飞离，两角三角先回弹再向角外飞出</li>
+          </ul>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary>为什么入场前有约 170ms 的空白？</summary>
+        <div class="faq-answer">
+          <p>参考视频前 <strong>10 帧（~167ms）</strong>画面完全空白，所有动画从第 10～12 帧才开始。因此 CSS 变量 <code>--t0: 0.17s</code> 作为全局起始延迟施加到所有图层，确保与参考视频的时间对齐。</p>
+        </div>
+      </details>
+    </div>
+
+    <!-- 底部 -->
+    <div class="footer">
+      <div class="footer-links">
+        <a href="transition.html">点击播放模式</a>
+        <span>·</span>
+        <a href="scroll.html">滚动驱动模式</a>
+        <span>·</span>
+        <a href="https://github.com/gfdfdxc/maimai-transition" target="_blank" rel="noopener">项目 GitHub</a>
+      </div>
+      <div>舞萌 Maimai Festival 转场复刻 — 纯 SVG + CSS 动画逐帧还原项目</div>
+
+      <!-- 特性标签 -->
+      <!-- <div class="features" style="margin-top:1rem;">
+        <span class="feature-tag">纯 SVG + CSS 动画</span>
+        <span class="feature-tag">60fps 逐帧测量校准</span>
+        <span class="feature-tag">入场 + 出场双阶段</span>
+        <span class="feature-tag">Chip 旋转缩放</span>
+        <span class="feature-tag">底板缓出动画</span>
+        <span class="feature-tag">两角三角回弹</span>
+        <span class="feature-tag">HOLD/SLIDE 随机抖动</span>
+        <span class="feature-tag">Cubic-Bezier 缓动函数</span>
+        <span class="feature-tag">滚动驱动逐帧预览</span>
+        <span class="feature-tag">一键重播</span>
+      </div> -->
+
+      <!-- 致谢 -->
+      <div style="margin-top:0.8rem;font-size:0.75rem;color:var(--text-secondary);line-height:1.6;">
+        静态转场图片与转场视频来源于 <a href="https://space.bilibili.com/112891212" target="_blank" rel="noopener" style="color:#3b7dd8;">@世界三傻</a>，在此表示感谢！
+      </div>
+    </div>
   </div>
-  <div class="stage">
-    <div class="frame" id="frame"></div>
-  </div>
-
-<script>
-  const frame = document.getElementById('frame');
-
-  /* 为每个 slide / hold 注入随机化的 duration / delay；同时覆盖入场+出场两段 */
-  function jitterSlides(root) {
-    const all = root.querySelectorAll('#HOLD > use, #Slide > use');
-    all.forEach(el => {
-      const durIn    = 0.55 + Math.random() * 0.25;  // v41 恢复 v33: 入场 0.55~0.80s
-      const delayIn  = 0.17 + Math.random() * 0.06;  // 入场 t0 0.17 + 0~0.06s
-      const durOut   = 0.15 + Math.random() * 0.03;  // v47: 0.15~0.18s
-      const delayOut = 1.583 + Math.random() * 0.04; // v47: 参考视频 f95(1.583s) 起退场，~f105(1.75s) 退完
-      el.style.animationDuration = `${durIn.toFixed(3)}s, ${durOut.toFixed(3)}s`;
-      el.style.animationDelay    = `${delayIn.toFixed(3)}s, ${delayOut.toFixed(3)}s`;
-    });
-  }
-
-  /* 入场期间把滴拉熊提到 SVG 末尾（绘制顺序最顶层），让"大圆盘半透明"阶段叠加在所有图层之上。
-     稳态时角部三角不覆盖中心区域，所以永久置顶不会影响视觉。 */
-  function elevateChip(root) {
-    const svg = root.querySelector('svg');
-    if (!svg) return;
-    const chip = svg.querySelector('#滴拉熊');
-    if (chip) svg.appendChild(chip);
-  }
-
-  async function loadSVG() {
-    const res = await fetch('舞萌转场复刻_16比9.svg');
-    const text = await res.text();
-    frame.innerHTML = text;
-    elevateChip(frame);
-    jitterSlides(frame);
-  }
-
-  function replay() {
-    const svg = frame.querySelector('svg');
-    if (!svg) return;
-    const clone = svg.cloneNode(true);
-    svg.replaceWith(clone);
-    elevateChip(frame);
-    jitterSlides(frame);
-  }
-
-  document.getElementById('btn-replay').addEventListener('click', replay);
-
-  loadSVG();
-</script>
 </body>
 </html>
